@@ -1,451 +1,381 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Hub Extrator</title>
-<style>
-  :root {
-    --bg: #0f1117;
-    --surface: #1a1d27;
-    --border: #2a2d3e;
-    --accent: #6366f1;
-    --accent-hover: #4f52d1;
-    --green: #22c55e;
-    --red: #ef4444;
-    --yellow: #f59e0b;
-    --text: #e2e8f0;
-    --muted: #64748b;
-    --card: #1e2130;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; min-height: 100vh; }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hub Crédito - Extrator de Leads</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
-  .header {
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    padding: 16px 24px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  .logo { font-size: 20px; font-weight: 700; color: var(--accent); }
-  .subtitle { font-size: 13px; color: var(--muted); }
+    body {
+      background: #0d0f14;
+      color: #e2e8f0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      padding: 24px 20px;
+    }
 
-  .container { max-width: 900px; margin: 0 auto; padding: 32px 24px; }
+    .container { max-width: 1100px; margin: 0 auto; }
 
-  .card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 24px;
-    margin-bottom: 20px;
-  }
-  .card h2 { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 16px; }
+    header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 32px;
+    }
 
-  .form-row { display: flex; gap: 12px; flex-wrap: wrap; }
-  .form-group { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 160px; }
-  label { font-size: 12px; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: .5px; }
-  input {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 10px 14px;
-    color: var(--text);
-    font-size: 14px;
-    outline: none;
-    transition: border-color .2s;
-  }
-  input:focus { border-color: var(--accent); }
+    header .logo {
+      width: 42px; height: 42px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+    }
 
-  .btn {
-    background: var(--accent);
-    color: #fff;
-    border: none;
-    border-radius: 8px;
-    padding: 10px 20px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background .2s, opacity .2s;
-    white-space: nowrap;
-  }
-  .btn:hover { background: var(--accent-hover); }
-  .btn:disabled { opacity: .5; cursor: not-allowed; }
-  .btn-outline {
-    background: transparent;
-    border: 1px solid var(--accent);
-    color: var(--accent);
-  }
-  .btn-outline:hover { background: var(--accent); color: #fff; }
-  .btn-green { background: #16a34a; }
-  .btn-green:hover { background: #15803d; }
+    header h1 { font-size: 22px; font-weight: 700; color: #f1f5f9; }
+    header p  { font-size: 13px; color: #64748b; margin-top: 2px; }
 
-  .status-bar {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 14px 16px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 13px;
-  }
-  .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-  .dot-idle { background: var(--muted); }
-  .dot-running { background: var(--yellow); animation: pulse 1s infinite; }
-  .dot-ok { background: var(--green); }
-  .dot-err { background: var(--red); }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+    .card {
+      background: #161b27;
+      border: 1px solid #1e2535;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
 
-  .progress-wrap { margin-top: 12px; }
-  .progress-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
-  .progress-bg { background: var(--border); border-radius: 99px; height: 6px; overflow: hidden; }
-  .progress-fill { height: 100%; background: var(--accent); border-radius: 99px; transition: width .3s; }
+    .card h2 { font-size: 15px; font-weight: 600; color: #94a3b8; margin-bottom: 16px; letter-spacing: .05em; text-transform: uppercase; }
 
-  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
-  .stat { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
-  .stat-val { font-size: 26px; font-weight: 700; color: var(--accent); }
-  .stat-label { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    /* Botão principal */
+    #btnExtrair {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      border: none;
+      border-radius: 10px;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .2s;
+    }
+    #btnExtrair:hover { opacity: .88; }
+    #btnExtrair:disabled { opacity: .45; cursor: not-allowed; }
 
-  .log {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 12px;
-    height: 180px;
-    overflow-y: auto;
-    font-family: monospace;
-    font-size: 12px;
-    line-height: 1.8;
-  }
-  .log .ok { color: var(--green); }
-  .log .err { color: var(--red); }
-  .log .info { color: var(--muted); }
-  .log .warn { color: var(--yellow); }
+    /* Status / log */
+    #status {
+      margin-top: 16px;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      display: none;
+    }
+    #status.info    { background: #1e3a5f; color: #93c5fd; border: 1px solid #2563eb44; }
+    #status.success { background: #14402a; color: #86efac; border: 1px solid #16a34a44; }
+    #status.error   { background: #3b1515; color: #fca5a5; border: 1px solid #dc262644; }
 
-  .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+    /* Barra de progresso */
+    .progress-wrap { margin-top: 16px; display: none; }
+    .progress-bar-bg {
+      background: #1e2535;
+      border-radius: 999px;
+      height: 8px;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #6366f1, #8b5cf6);
+      border-radius: 999px;
+      transition: width .4s ease;
+    }
+    .progress-text { font-size: 12px; color: #64748b; margin-top: 6px; text-align: center; }
 
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th { text-align: left; padding: 10px 12px; background: var(--surface); color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 1; }
-  td { padding: 9px 12px; border-bottom: 1px solid var(--border); color: var(--text); }
-  tr:hover td { background: var(--surface); }
-  .valor { color: var(--green); font-weight: 600; }
-  .table-wrap { max-height: 420px; overflow-y: auto; border-radius: 8px; border: 1px solid var(--border); }
-  .empty { text-align: center; padding: 40px; color: var(--muted); }
+    /* Stats */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .stat-box {
+      background: #161b27;
+      border: 1px solid #1e2535;
+      border-radius: 10px;
+      padding: 16px;
+      text-align: center;
+    }
+    .stat-box .num { font-size: 28px; font-weight: 700; color: #818cf8; }
+    .stat-box .lbl { font-size: 12px; color: #64748b; margin-top: 4px; }
 
-  @media (max-width: 600px) {
-    .form-row { flex-direction: column; }
-    .stats { grid-template-columns: 1fr 1fr; }
-  }
-</style>
+    /* Botões de download */
+    .dl-btns { display: flex; gap: 10px; margin-bottom: 16px; }
+    .dl-btn {
+      padding: 9px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: opacity .2s;
+    }
+    .dl-btn:disabled { opacity: .35; cursor: not-allowed; }
+    .dl-btn.csv  { background: #16a34a; color: #fff; }
+    .dl-btn.json { background: #2563eb; color: #fff; }
+    .dl-btn:hover:not(:disabled) { opacity: .85; }
+
+    /* Tabela */
+    .table-wrap { overflow-x: auto; max-height: 460px; overflow-y: auto; border-radius: 8px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 700px; }
+    thead th {
+      background: #1e2535;
+      color: #94a3b8;
+      padding: 10px 14px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      position: sticky; top: 0; z-index: 1;
+    }
+    tbody tr { border-bottom: 1px solid #1a2030; transition: background .15s; }
+    tbody tr:hover { background: #1a2336; }
+    tbody td { padding: 9px 14px; color: #cbd5e1; }
+    tbody td.valor { color: #86efac; font-weight: 600; }
+    tbody td.cpf   { font-family: monospace; font-size: 12px; color: #a5b4fc; }
+
+    .empty-state {
+      text-align: center;
+      padding: 48px 20px;
+      color: #334155;
+    }
+    .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+    .empty-state p { font-size: 14px; }
+  </style>
 </head>
 <body>
-
-<div class="header">
-  <div>
-    <div class="logo">⚡ Hub Extrator</div>
-    <div class="subtitle">Mapa da Mina — Extração automática de leads</div>
-  </div>
-</div>
-
 <div class="container">
 
-  <!-- Config -->
+  <header>
+    <div class="logo">📊</div>
+    <div>
+      <h1>Hub Crédito — Extrator de Leads</h1>
+      <p>Extração via n8n · Mapa da Mina · Loja 9562</p>
+    </div>
+  </header>
+
+  <!-- Card de ação -->
   <div class="card">
-    <h2>🔐 Configuração</h2>
-    <div class="form-row">
-      <div class="form-group">
-        <label>Usuário</label>
-        <input id="username" value="vitoriasiqueira" />
+    <h2>Extração</h2>
+    <button id="btnExtrair" onclick="iniciarExtracao()">🚀 Iniciar Extração Completa</button>
+
+    <div id="status"></div>
+
+    <div class="progress-wrap" id="progressWrap">
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="progressBar"></div>
       </div>
-      <div class="form-group">
-        <label>Senha</label>
-        <input id="password" type="password" value="123456" />
-      </div>
-      <div class="form-group">
-        <label>Loja ID</label>
-        <input id="lojaId" value="9562" />
-      </div>
-      <div class="form-group">
-        <label>Limite / Página</label>
-        <input id="limit" value="100" type="number" min="10" max="100" />
-      </div>
-      <div class="form-group" style="justify-content: flex-end;">
-        <label>&nbsp;</label>
-        <button class="btn" id="btnStart" onclick="iniciar()">▶ Iniciar Extração</button>
-      </div>
+      <div class="progress-text" id="progressText">Aguardando...</div>
     </div>
   </div>
 
-  <!-- Status -->
-  <div class="card">
-    <h2>📡 Status</h2>
-    <div class="status-bar">
-      <div class="dot dot-idle" id="dot"></div>
-      <span id="statusMsg">Aguardando...</span>
-    </div>
-    <div class="progress-wrap" id="progressWrap" style="display:none">
-      <div class="progress-label">
-        <span id="progressText">0 / 0 páginas</span>
-        <span id="progressPct">0%</span>
-      </div>
-      <div class="progress-bg"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
-    </div>
-
-    <div style="margin-top:14px">
-      <div class="log" id="log"><span class="info">// log de execução</span></div>
-    </div>
-  </div>
-
-  <!-- Stats -->
+  <!-- Estatísticas -->
   <div class="stats">
-    <div class="stat"><div class="stat-val" id="statTotal">—</div><div class="stat-label">Total disponível</div></div>
-    <div class="stat"><div class="stat-val" id="statExtraido">0</div><div class="stat-label">Extraídos</div></div>
-    <div class="stat"><div class="stat-val" id="statPaginas">—</div><div class="stat-label">Páginas</div></div>
-    <div class="stat"><div class="stat-val" id="statValor">R$ —</div><div class="stat-label">Valor total liberado</div></div>
+    <div class="stat-box">
+      <div class="num" id="statTotal">—</div>
+      <div class="lbl">Total de Leads</div>
+    </div>
+    <div class="stat-box">
+      <div class="num" id="statValor">—</div>
+      <div class="lbl">Valor Total Liberado</div>
+    </div>
+    <div class="stat-box">
+      <div class="num" id="statTempo">—</div>
+      <div class="lbl">Tempo de Extração</div>
+    </div>
   </div>
 
-  <!-- Ações -->
-  <div class="actions" id="actionsDiv" style="display:none">
-    <button class="btn btn-green" onclick="baixarCSV()">⬇ Baixar CSV</button>
-    <button class="btn btn-outline" onclick="baixarJSON()">⬇ Baixar JSON</button>
-    <button class="btn btn-outline" onclick="limpar()">🗑 Limpar</button>
-  </div>
+  <!-- Tabela de resultados -->
+  <div class="card">
+    <h2>Leads Extraídos</h2>
 
-  <!-- Tabela -->
-  <div id="tableSection" style="display:none; margin-top:20px;">
-    <div class="card" style="padding:0; overflow:hidden;">
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Nome</th>
-              <th>CPF</th>
-              <th>Matrícula</th>
-              <th>Dt. Nascimento</th>
-              <th>Dt. Admissão</th>
-              <th>Valor Liberado</th>
-            </tr>
-          </thead>
-          <tbody id="tableBody"></tbody>
-        </table>
-      </div>
+    <div class="dl-btns">
+      <button class="dl-btn csv"  id="btnCSV"  onclick="baixarCSV()"  disabled>⬇ Baixar CSV</button>
+      <button class="dl-btn json" id="btnJSON" onclick="baixarJSON()" disabled>⬇ Baixar JSON</button>
+    </div>
+
+    <div class="table-wrap">
+      <table id="tabelaLeads">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>CPF</th>
+            <th>Nome</th>
+            <th>Matrícula</th>
+            <th>Dt. Nascimento</th>
+            <th>Dt. Admissão</th>
+            <th>Valor Liberado</th>
+            <th>Expiração</th>
+          </tr>
+        </thead>
+        <tbody id="tbodyLeads">
+          <tr>
+            <td colspan="8">
+              <div class="empty-state">
+                <div class="icon">📭</div>
+                <p>Clique em "Iniciar Extração" para buscar os leads via n8n</p>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </div>
 
 </div>
 
 <script>
-let leads = [];
-let rodando = false;
-let token = '';
+  // ⚙️ URL do webhook do n8n — já ativo e aguardando requisições
+  const N8N_WEBHOOK_URL = 'https://rarelookingorca-n8n.cloudfy.live/webhook/hub-credito-leads';
 
-function log(msg, tipo = 'info') {
-  const el = document.getElementById('log');
-  const t = new Date().toLocaleTimeString('pt-BR');
-  el.innerHTML += `\n<span class="${tipo}">[${t}] ${msg}</span>`;
-  el.scrollTop = el.scrollHeight;
-}
+  let leadsData = [];
 
-function setStatus(msg, estado = 'idle') {
-  document.getElementById('statusMsg').textContent = msg;
-  const dot = document.getElementById('dot');
-  dot.className = 'dot dot-' + estado;
-}
-
-function fmt(v) { return new Intl.NumberFormat('pt-BR', {style:'currency',currency:'BRL'}).format(v); }
-function fmtData(s) { return s ? s.split('T')[0].split('-').reverse().join('/') : '—'; }
-function fmtCPF(c) { return c ? c.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4') : '—'; }
-
-async function login() {
-  log('Fazendo login...', 'info');
-  const user = document.getElementById('username').value;
-  const pass = document.getElementById('password').value;
-
-  const body = new FormData();
-  body.append('1_$ACTION_REF_2', '1');
-  body.append('1_$ACTION_2:0', JSON.stringify({"id":"60783eba76b8a7eabfa60e235c9d06c615e7555936","bound":"$@1"}));
-  body.append('1_$ACTION_2:1', '["$undefined"]');
-  body.append('1_$ACTION_KEY', 'k3021864066');
-  body.append('1_username', user);
-  body.append('1_password', pass);
-  body.append('0', '["$undefined","$K1"]');
-
-  const resp = await fetch('https://fgts.hubcredito.com.br/login', {
-    method: 'POST',
-    headers: {
-      'next-action': '60783eba76b8a7eabfa60e235c9d06c615e7555936',
-      'accept': 'text/x-component',
-      'origin': 'https://fgts.hubcredito.com.br',
-      'referer': 'https://fgts.hubcredito.com.br/login'
-    },
-    body,
-    credentials: 'include'
-  });
-
-  const text = await resp.text();
-  // Procura linha que começa com 1: e tem accessToken
-  for (const line of text.split('\n')) {
-    if (line.startsWith('1:') && line.includes('accessToken')) {
-      try {
-        const obj = JSON.parse(line.slice(2));
-        const tk = obj?.data?.token?.accessToken;
-        if (tk) return tk;
-      } catch(e) {}
-    }
+  function setStatus(msg, tipo = 'info') {
+    const el = document.getElementById('status');
+    el.textContent = msg;
+    el.className = tipo;
+    el.style.display = 'block';
   }
-  throw new Error('Token não encontrado. Verifique usuário/senha.');
-}
 
-async function buscarPagina(pg, tk) {
-  const lojaId = document.getElementById('lojaId').value;
-  const limit = document.getElementById('limit').value;
-  const resp = await fetch(`https://api.hubcredito.com.br/api/SugestoesOferta?lojaId=${lojaId}&page=${pg}&limit=${limit}`, {
-    headers: {
-      'Authorization': `Bearer ${tk}`,
-      'Content-Type': 'application/json',
-      'Origin': 'https://fgts.hubcredito.com.br',
-      'Referer': 'https://fgts.hubcredito.com.br/'
-    }
-  });
-  if (!resp.ok) throw new Error(`HTTP ${resp.status} na página ${pg}`);
-  return resp.json();
-}
+  function setProgresso(pct, texto) {
+    const wrap = document.getElementById('progressWrap');
+    const bar  = document.getElementById('progressBar');
+    const txt  = document.getElementById('progressText');
+    wrap.style.display = 'block';
+    bar.style.width = pct + '%';
+    txt.textContent  = texto;
+  }
 
-async function iniciar() {
-  if (rodando) return;
-  rodando = true;
-  leads = [];
-  document.getElementById('btnStart').disabled = true;
-  document.getElementById('tableBody').innerHTML = '';
-  document.getElementById('actionsDiv').style.display = 'none';
-  document.getElementById('tableSection').style.display = 'none';
-  document.getElementById('progressWrap').style.display = 'block';
-  document.getElementById('log').innerHTML = '';
+  function fmtBRL(val) {
+    return (val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  }
 
-  try {
-    setStatus('Fazendo login...', 'running');
-    token = await login();
-    log('✓ Login OK — token obtido', 'ok');
+  async function iniciarExtracao() {
+    const btn = document.getElementById('btnExtrair');
+    btn.disabled = true;
+    btn.textContent = '⏳ Extraindo...';
 
-    setStatus('Buscando primeira página...', 'running');
-    const first = await buscarPagina(1, token);
-    const total = first.totalCount;
-    const limit = parseInt(document.getElementById('limit').value);
-    const totalPags = Math.ceil(total / limit);
+    document.getElementById('btnCSV').disabled  = true;
+    document.getElementById('btnJSON').disabled = true;
 
-    document.getElementById('statTotal').textContent = total.toLocaleString('pt-BR');
-    document.getElementById('statPaginas').textContent = totalPags;
-    log(`✓ Total: ${total.toLocaleString('pt-BR')} leads — ${totalPags} páginas`, 'ok');
+    leadsData = [];
+    document.getElementById('tbodyLeads').innerHTML = '';
+    document.getElementById('statTotal').textContent = '—';
+    document.getElementById('statValor').textContent = '—';
+    document.getElementById('statTempo').textContent = '—';
 
-    // Adiciona itens da pág 1
-    leads.push(...first.items);
-    renderTabela(first.items);
+    setStatus('🔐 Fazendo login no Hub Crédito via n8n...', 'info');
+    setProgresso(5, 'Autenticando...');
 
-    // Demais páginas
-    for (let p = 2; p <= totalPags; p++) {
-      setStatus(`Buscando página ${p} de ${totalPags}...`, 'running');
-      const pct = Math.round((p / totalPags) * 100);
-      document.getElementById('progressFill').style.width = pct + '%';
-      document.getElementById('progressText').textContent = `${p} / ${totalPags} páginas`;
-      document.getElementById('progressPct').textContent = pct + '%';
-      document.getElementById('statExtraido').textContent = leads.length.toLocaleString('pt-BR');
+    const inicio = Date.now();
 
-      try {
-        const data = await buscarPagina(p, token);
-        leads.push(...data.items);
-        renderTabela(data.items);
-        if (p % 10 === 0) log(`Página ${p}/${totalPags} — ${leads.length.toLocaleString('pt-BR')} leads`, 'info');
-      } catch(e) {
-        log(`⚠ Erro pág ${p}: ${e.message}`, 'warn');
+    try {
+      // O n8n faz login, pagina tudo e devolve os leads
+      setStatus('📡 Buscando todos os leads (pode levar alguns minutos para 139k leads)...', 'info');
+      setProgresso(10, 'n8n buscando leads...');
+
+      const resp = await fetch(N8N_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source: 'html_extractor', timestamp: new Date().toISOString() })
+      });
+
+      if (!resp.ok) {
+        throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
       }
 
-      // Pequena pausa para não sobrecarregar
-      await new Promise(r => setTimeout(r, 80));
+      setProgresso(80, 'Processando resposta...');
+      const data = await resp.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'Erro desconhecido no n8n');
+      }
+
+      leadsData = data.leads || [];
+      const tempo = ((Date.now() - inicio) / 1000).toFixed(1);
+
+      // Stats
+      const valorTotal = leadsData.reduce((s, l) => s + (l.valorLiberado || 0), 0);
+      document.getElementById('statTotal').textContent = leadsData.length.toLocaleString('pt-BR');
+      document.getElementById('statValor').textContent = fmtBRL(valorTotal);
+      document.getElementById('statTempo').textContent = tempo + 's';
+
+      // Renderiza tabela (máx 1000 linhas para performance)
+      renderTabela(leadsData.slice(0, 1000));
+
+      setProgresso(100, `✅ ${leadsData.length.toLocaleString('pt-BR')} leads extraídos`);
+      setStatus(`✅ Extração concluída! ${leadsData.length.toLocaleString('pt-BR')} leads em ${tempo}s${leadsData.length > 1000 ? ' · Exibindo primeiros 1.000' : ''}`, 'success');
+
+      document.getElementById('btnCSV').disabled  = false;
+      document.getElementById('btnJSON').disabled = false;
+
+    } catch (err) {
+      setStatus('❌ Erro: ' + err.message, 'error');
+      setProgresso(0, 'Falha na extração');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '🔄 Extrair Novamente';
     }
-
-    const valorTotal = leads.reduce((s, l) => s + (l.valorLiberado || 0), 0);
-    document.getElementById('statExtraido').textContent = leads.length.toLocaleString('pt-BR');
-    document.getElementById('statValor').textContent = fmt(valorTotal);
-    document.getElementById('progressFill').style.width = '100%';
-    document.getElementById('progressText').textContent = `${totalPags} / ${totalPags} páginas`;
-    document.getElementById('progressPct').textContent = '100%';
-
-    setStatus(`✓ Concluído — ${leads.length.toLocaleString('pt-BR')} leads extraídos`, 'ok');
-    log(`✓ Extração completa! ${leads.length.toLocaleString('pt-BR')} leads | Valor total: ${fmt(valorTotal)}`, 'ok');
-
-    document.getElementById('actionsDiv').style.display = 'flex';
-    document.getElementById('tableSection').style.display = 'block';
-
-  } catch(e) {
-    setStatus('Erro: ' + e.message, 'err');
-    log('✗ ' + e.message, 'err');
   }
 
-  rodando = false;
-  document.getElementById('btnStart').disabled = false;
-}
+  function renderTabela(leads) {
+    const tbody = document.getElementById('tbodyLeads');
+    tbody.innerHTML = leads.map((l, i) => `
+      <tr>
+        <td>${i + 1}</td>
+        <td class="cpf">${l.cpf || '—'}</td>
+        <td>${l.nome || '—'}</td>
+        <td>${l.matricula || '—'}</td>
+        <td>${l.dataNascimento || '—'}</td>
+        <td>${l.dataAdmissao || '—'}</td>
+        <td class="valor">${fmtBRL(l.valorLiberado)}</td>
+        <td>${l.hubExpiracao || '—'}</td>
+      </tr>
+    `).join('');
+  }
 
-function renderTabela(items) {
-  const tbody = document.getElementById('tableBody');
-  const base = leads.length - items.length;
-  items.forEach((l, i) => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${(base + i + 1).toLocaleString('pt-BR')}</td>
-      <td>${l.nome || '—'}</td>
-      <td>${fmtCPF(l.cpf)}</td>
-      <td>${l.matricula || '—'}</td>
-      <td>${fmtData(l.dataNascimento)}</td>
-      <td>${fmtData(l.dataAdmissao)}</td>
-      <td class="valor">${fmt(l.valorLiberado || 0)}</td>
-    `;
-    tbody.appendChild(tr);
-  });
-  document.getElementById('tableSection').style.display = 'block';
-}
+  function baixarCSV() {
+    if (!leadsData.length) return;
+    const header = 'CPF,Nome,Matrícula,Dt. Nascimento,Dt. Admissão,Valor Liberado,Hub ID,Expiração';
+    const rows = leadsData.map(l => [
+      l.cpf || '',
+      `"${(l.nome || '').replace(/"/g, '""')}"`,
+      `"${(l.matricula || '').replace(/"/g, '""')}"`,
+      l.dataNascimento || '',
+      l.dataAdmissao   || '',
+      l.valorLiberado  || 0,
+      l.hubId          || '',
+      l.hubExpiracao   || ''
+    ].join(','));
 
-function baixarCSV() {
-  const cols = ['cpf','nome','matricula','dataNascimento','dataAdmissao','valorLiberado','id','dataExpiracao'];
-  const header = 'CPF,Nome,Matrícula,Dt. Nascimento,Dt. Admissão,Valor Liberado,Hub ID,Expiração';
-  const rows = leads.map(l =>
-    cols.map(k => {
-      let v = l[k] || '';
-      if (typeof v === 'string' && v.includes(',')) v = `"${v}"`;
-      return v;
-    }).join(',')
-  );
-  const csv = [header, ...rows].join('\n');
-  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `hub_leads_${new Date().toISOString().slice(0,10)}.csv`;
-  a.click();
-}
+    const csv  = '﻿' + [header, ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = `hub_leads_${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
 
-function baixarJSON() {
-  const blob = new Blob([JSON.stringify(leads, null, 2)], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `hub_leads_${new Date().toISOString().slice(0,10)}.json`;
-  a.click();
-}
-
-function limpar() {
-  leads = [];
-  document.getElementById('tableBody').innerHTML = '';
-  document.getElementById('tableSection').style.display = 'none';
-  document.getElementById('actionsDiv').style.display = 'none';
-  document.getElementById('statTotal').textContent = '—';
-  document.getElementById('statExtraido').textContent = '0';
-  document.getElementById('statPaginas').textContent = '—';
-  document.getElementById('statValor').textContent = 'R$ —';
-  document.getElementById('progressWrap').style.display = 'none';
-  document.getElementById('log').innerHTML = '<span class="info">// log de execução</span>';
-  setStatus('Aguardando...', 'idle');
-}
+  function baixarJSON() {
+    if (!leadsData.length) return;
+    const json = JSON.stringify({ exportedAt: new Date().toISOString(), total: leadsData.length, leads: leadsData }, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = `hub_leads_${new Date().toISOString().slice(0,10)}.json`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
 </script>
 </body>
 </html>
