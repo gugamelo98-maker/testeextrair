@@ -143,6 +143,21 @@
     tbody td.valor { color: #86efac; font-weight: 600; }
     tbody td.cpf   { font-family: monospace; font-size: 12px; color: #a5b4fc; }
 
+    /* Botões de quantidade */
+    .qty-btn {
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid #1e2535;
+      background: #0d0f14;
+      color: #94a3b8;
+      transition: all .15s;
+    }
+    .qty-btn:hover { border-color: #6366f1; color: #a5b4fc; }
+    .qty-btn.active { background: #312e81; border-color: #6366f1; color: #c7d2fe; }
+
     .empty-state {
       text-align: center;
       padding: 48px 20px;
@@ -166,7 +181,25 @@
   <!-- Card de ação -->
   <div class="card">
     <h2>Extração</h2>
-    <button id="btnExtrair" onclick="iniciarExtracao()">🚀 Iniciar Extração Completa</button>
+
+    <div style="margin-bottom:16px;">
+      <label style="display:block;font-size:12px;color:#64748b;margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em;">Quantidade de leads</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+        <button class="qty-btn" onclick="setQty(100)">100</button>
+        <button class="qty-btn" onclick="setQty(500)">500</button>
+        <button class="qty-btn" onclick="setQty(1000)">1.000</button>
+        <button class="qty-btn" onclick="setQty(5000)">5.000</button>
+        <button class="qty-btn active" onclick="setQty(0)">Todos</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <input type="number" id="inputQty" min="1" placeholder="Ou digite um número..." value=""
+          style="background:#0d0f14;border:1px solid #1e2535;border-radius:8px;color:#e2e8f0;padding:8px 12px;font-size:13px;width:200px;outline:none;"
+          oninput="onQtyInput(this.value)" />
+        <span id="qtyLabel" style="font-size:13px;color:#64748b;">Todos os leads disponíveis</span>
+      </div>
+    </div>
+
+    <button id="btnExtrair" onclick="iniciarExtracao()">🚀 Iniciar Extração</button>
 
     <div id="status"></div>
 
@@ -238,6 +271,31 @@
   const N8N_WEBHOOK_URL = 'https://rarelookingorca-n8n.cloudfy.live/webhook/hub-credito-leads';
 
   let leadsData = [];
+  let limiteQty = 0; // 0 = todos
+
+  function setQty(n) {
+    limiteQty = n;
+    document.querySelectorAll('.qty-btn').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+    if (n === 0) {
+      document.getElementById('inputQty').value = '';
+      document.getElementById('qtyLabel').textContent = 'Todos os leads disponíveis';
+    } else {
+      document.getElementById('inputQty').value = n;
+      document.getElementById('qtyLabel').textContent = `Extrair até ${n.toLocaleString('pt-BR')} leads`;
+    }
+  }
+
+  function onQtyInput(val) {
+    document.querySelectorAll('.qty-btn').forEach(b => b.classList.remove('active'));
+    const n = parseInt(val) || 0;
+    limiteQty = n;
+    if (!n) {
+      document.getElementById('qtyLabel').textContent = 'Todos os leads disponíveis';
+    } else {
+      document.getElementById('qtyLabel').textContent = `Extrair até ${n.toLocaleString('pt-BR')} leads`;
+    }
+  }
 
   function setStatus(msg, tipo = 'info') {
     const el = document.getElementById('status');
@@ -280,13 +338,20 @@
 
     try {
       // O n8n faz login, pagina tudo e devolve os leads
-      setStatus('📡 Buscando todos os leads (pode levar alguns minutos para 139k leads)...', 'info');
+      const qtyTxt = limiteQty ? `até ${limiteQty.toLocaleString('pt-BR')} leads` : 'todos os leads';
+      setStatus(`📡 Buscando ${qtyTxt} via n8n...`, 'info');
       setProgresso(10, 'n8n buscando leads...');
+
+      const payload = {
+        source: 'html_extractor',
+        timestamp: new Date().toISOString(),
+        limite: limiteQty || null   // null = buscar todos
+      };
 
       const resp = await fetch(N8N_WEBHOOK_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ source: 'html_extractor', timestamp: new Date().toISOString() })
+        body: JSON.stringify(payload)
       });
 
       if (!resp.ok) {
