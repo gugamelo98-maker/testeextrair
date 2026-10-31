@@ -728,6 +728,7 @@ const WEBHOOK_V8     = 'https://rarelookingorca-n8n.cloudfy.live/webhook/v8-higi
 const WH_SALVAR_BASE  = 'https://rarelookingorca-n8n.cloudfy.live/webhook/leads-base-v8-salvar';
 const WH_BUSCAR_BASE  = 'https://rarelookingorca-n8n.cloudfy.live/webhook/leads-base-v8-buscar';
 const WH_EXTRAIR_BASE = 'https://rarelookingorca-n8n.cloudfy.live/webhook/extrair-base-v8';
+const WH_CONTAR_BASE  = 'https://rarelookingorca-n8n.cloudfy.live/webhook/contar-base-v8';
 const WH_SALVAR_ML   = 'https://rarelookingorca-n8n.cloudfy.live/webhook/meus-leads-salvar';
 const WH_BUSCAR_ML   = 'https://rarelookingorca-n8n.cloudfy.live/webhook/meus-leads-buscar';
 
@@ -1157,26 +1158,69 @@ async function extrairBaseV8() {
       throw new Error(`HTTP ${resp.status} — ${txt.slice(0,200)}`);
     }
 
-    const data = await resp.json();
-    const totalSalvo = data.total_salvo || 0;
-
-    setProgress('progressBarDB','progressTextDB','progressWrapDB', 100,
-      `✅ ${totalSalvo.toLocaleString('pt-BR')} leads salvos`);
-    setStatus('statusDB',
-      `✅ Extração concluída! ${totalSalvo.toLocaleString('pt-BR')} leads salvos no banco de dados.`,
-      'success');
-
-    // Limpar senha por segurança
+    // n8n com onReceived responde imediatamente — iniciar poll de progresso
     document.getElementById('v8Senha').value = '';
-
     document.getElementById('tab-db').classList.add('has-data');
-    await buscarBaseV8();
+
+    setStatus('statusDB',
+      '⏳ Extração rodando no servidor... Acompanhe o progresso abaixo.',
+      'info');
+
+    // Poll: checar quantidade no banco a cada 10s
+    let pollCount = 0;
+    const META = 14395;
+    const pollInterval = setInterval(async () => {
+      pollCount++;
+      try {
+        const r = await fetch(WH_CONTAR_BASE, { method: 'POST',
+          headers: { 'Content-Type': 'application/json' }, body: '{}' });
+        if (!r.ok) return;
+        const d = await r.json();
+        const salvos = d.total_salvo || 0;
+        const pct = Math.min(Math.round(salvos / META * 100), 99);
+
+        setProgress('progressBarDB','progressTextDB','progressWrapDB', pct,
+          `⏳ ${salvos.toLocaleString('pt-BR')} / ${META.toLocaleString('pt-BR')} leads salvos`);
+        setStatus('statusDB',
+          `⏳ Extraindo... ${salvos.toLocaleString('pt-BR')} de ${META.toLocaleString('pt-BR')} leads salvos no banco.`,
+          'info');
+
+        // Parar poll quando >= META ou após 15 min (90 tentativas × 10s)
+        if (salvos >= META || pollCount >= 90) {
+          clearInterval(pollInterval);
+          btn.disabled = false;
+          btn.textContent = '🗄️ Extrair e Salvar Base V8';
+          const finalSalvos = salvos;
+          setProgress('progressBarDB','progressTextDB','progressWrapDB', 100,
+            `✅ ${finalSalvos.toLocaleString('pt-BR')} leads salvos`);
+          setStatus('statusDB',
+            `✅ Extração concluída! ${finalSalvos.toLocaleString('pt-BR')} leads salvos no banco de dados.`,
+            'success');
+          await buscarBaseV8();
+        }
+      } catch(e) { /* ignorar erros de poll */ }
+    }, 10000);
+
+    // Primeira checagem imediata após 5s
+    setTimeout(async () => {
+      try {
+        const r = await fetch(WH_CONTAR_BASE, { method: 'POST',
+          headers: { 'Content-Type': 'application/json' }, body: '{}' });
+        if (!r.ok) return;
+        const d = await r.json();
+        const salvos = d.total_salvo || 0;
+        const pct = Math.min(Math.round(salvos / META * 100), 5);
+        setProgress('progressBarDB','progressTextDB','progressWrapDB', Math.max(pct, 2),
+          `⏳ ${salvos.toLocaleString('pt-BR')} / ${META.toLocaleString('pt-BR')} leads salvos`);
+      } catch(e) {}
+    }, 5000);
+
+    return; // btn fica disabled até poll terminar
 
   } catch(err) {
     clearInterval(ticker);
     setStatus('statusDB', '❌ Erro: ' + err.message, 'error');
     setProgress('progressBarDB','progressTextDB','progressWrapDB', 0, 'Falha');
-  } finally {
     btn.disabled = false;
     btn.textContent = '🗄️ Extrair e Salvar Base V8';
   }
