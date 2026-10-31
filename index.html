@@ -578,9 +578,18 @@
     <div class="card">
       <div class="card-label">Extrair Base Completa V8 SUCCESS</div>
       <p style="font-size:13px;color:var(--fg2);margin-bottom:14px;">
-        Carrega os 14.386 leads SUCCESS da V8 (todos que já simulou) e salva no banco de dados.
-        Pode levar alguns minutos pela quantidade de páginas.
+        A extração é feita pelo servidor n8n (sem limitação de CORS). Informe suas credenciais V8 abaixo — elas são enviadas diretamente ao n8n e não são armazenadas no painel.
       </p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+        <div>
+          <label style="font-size:11px;color:var(--fg3);display:block;margin-bottom:5px;">Usuário / E-mail V8</label>
+          <input type="email" id="v8Usuario" class="search-input" style="width:100%" placeholder="seu@email.com">
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--fg3);display:block;margin-bottom:5px;">Senha V8</label>
+          <input type="password" id="v8Senha" class="search-input" style="width:100%" placeholder="••••••••">
+        </div>
+      </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;">
         <button class="btn-main" id="btnExtrairBaseV8" onclick="extrairBaseV8()" style="margin-top:0;flex:1;min-width:200px;">
           🗄️ Extrair e Salvar Base V8
@@ -716,8 +725,9 @@
 // ──────────────────────────────────────────────────────────────
 const WEBHOOK_HUB    = 'https://rarelookingorca-n8n.cloudfy.live/webhook/hub-credito-leads';
 const WEBHOOK_V8     = 'https://rarelookingorca-n8n.cloudfy.live/webhook/v8-higienizacao-clt';
-const WH_SALVAR_BASE = 'https://rarelookingorca-n8n.cloudfy.live/webhook/leads-base-v8-salvar';
-const WH_BUSCAR_BASE = 'https://rarelookingorca-n8n.cloudfy.live/webhook/leads-base-v8-buscar';
+const WH_SALVAR_BASE  = 'https://rarelookingorca-n8n.cloudfy.live/webhook/leads-base-v8-salvar';
+const WH_BUSCAR_BASE  = 'https://rarelookingorca-n8n.cloudfy.live/webhook/leads-base-v8-buscar';
+const WH_EXTRAIR_BASE = 'https://rarelookingorca-n8n.cloudfy.live/webhook/extrair-base-v8';
 const WH_SALVAR_ML   = 'https://rarelookingorca-n8n.cloudfy.live/webhook/meus-leads-salvar';
 const WH_BUSCAR_ML   = 'https://rarelookingorca-n8n.cloudfy.live/webhook/meus-leads-buscar';
 
@@ -1104,127 +1114,71 @@ function baixarV8JSON() {
 // ABA BASE DE DADOS V8 — Extração + Busca
 // ──────────────────────────────────────────────────────────────
 let dbLeads = [], dbPagina = 1, dbTotal = 0, dbBusca = '';
-let v8Token = null, v8TokenExp = 0;
-
-async function getV8Token() {
-  if (v8Token && Date.now() < v8TokenExp) return v8Token;
-  const r = await fetch(V8_AUTH_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      grant_type: 'password',
-      client_id: V8_CLIENT_ID,
-      username: '', password: '',
-      audience: 'https://v2-bff-prod-api.yellowisland-b252a8a0.eastus.azurecontainerapps.io',
-      scope: 'openid profile email offline_access'
-    })
-  });
-  if (!r.ok) throw new Error('Falha ao autenticar na V8 — verifique as credenciais');
-  const d = await r.json();
-  v8Token = d.access_token;
-  v8TokenExp = Date.now() + (d.expires_in - 60) * 1000;
-  return v8Token;
-}
 
 async function extrairBaseV8() {
+  const usuario = (document.getElementById('v8Usuario').value || '').trim();
+  const senha   = (document.getElementById('v8Senha').value   || '').trim();
+
+  if (!usuario || !senha) {
+    setStatus('statusDB', '⚠️ Informe seu usuário e senha da V8 para continuar.', 'warning');
+    document.getElementById('statusDB').style.display = 'block';
+    return;
+  }
+
   const btn = document.getElementById('btnExtrairBaseV8');
   btn.disabled = true;
   btn.textContent = '⏳ Extraindo...';
 
-  setStatus('statusDB', '🔐 Autenticando na V8...', 'info');
-  setProgress('progressBarDB','progressTextDB','progressWrapDB', 2, 'Autenticando...');
+  setStatus('statusDB',
+    '🔐 Enviando para o n8n... A extração das 144 páginas roda no servidor e pode levar alguns minutos. Aguarde.',
+    'info');
+  setProgress('progressBarDB','progressTextDB','progressWrapDB', 10, 'n8n autenticando na V8...');
 
-  const START = '2025-07-01T03:00:00.000Z';
-  const END   = '2026-11-01T02:59:59.999Z';
-  const LIMIT = 100;
-  let page = 1, totalSalvos = 0, totalPages = null;
+  // Animar progresso enquanto aguarda (o n8n demora)
+  let fakePct = 10;
+  const ticker = setInterval(() => {
+    fakePct = Math.min(fakePct + 0.5, 92);
+    const pagesEstimated = Math.round((fakePct - 10) / 82 * 144);
+    setProgress('progressBarDB','progressTextDB','progressWrapDB', fakePct,
+      `Servidor processando... ~${pagesEstimated}/144 páginas`);
+  }, 1500);
 
   try {
-    const token = await getV8Token();
+    const resp = await fetch(WH_EXTRAIR_BASE, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ usuario, senha })
+    });
 
-    // descobrir total de páginas
-    const r0 = await fetch(
-      `${V8_API_BASE}/private-consignment/consult?startDate=${START}&endDate=${END}&page=1&limit=${LIMIT}&status=SUCCESS`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-    if (!r0.ok) throw new Error('Erro ao consultar V8: HTTP ' + r0.status);
-    const d0 = await r0.json();
-    const totalLeads = d0.total || 14386;
-    totalPages = Math.ceil(totalLeads / LIMIT);
+    clearInterval(ticker);
 
-    setStatus('statusDB', `📡 Extraindo ${totalLeads.toLocaleString('pt-BR')} leads em ${totalPages} páginas...`, 'info');
-
-    // salvar primeira página
-    const primeiraLote = (d0.items || d0.data || []).map(mapV8Lead);
-    if (primeiraLote.length) {
-      await salvarLoteBaseV8(primeiraLote, token);
-      totalSalvos += primeiraLote.length;
+    if (!resp.ok) {
+      const txt = await resp.text();
+      throw new Error(`HTTP ${resp.status} — ${txt.slice(0,200)}`);
     }
 
-    // demais páginas
-    for (page = 2; page <= totalPages; page++) {
-      const pct = Math.round((page / totalPages) * 95) + 3;
-      setProgress('progressBarDB','progressTextDB','progressWrapDB', pct,
-        `Página ${page}/${totalPages} · ${totalSalvos.toLocaleString('pt-BR')} salvos...`);
-      setStatus('statusDB', `⏳ Página ${page} de ${totalPages}...`, 'info');
+    const data = await resp.json();
+    const totalSalvo = data.total_salvo || 0;
 
-      const rp = await fetch(
-        `${V8_API_BASE}/private-consignment/consult?startDate=${START}&endDate=${END}&page=${page}&limit=${LIMIT}&status=SUCCESS`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      if (!rp.ok) throw new Error(`Erro na página ${page}: HTTP ${rp.status}`);
-      const dp = await rp.json();
-      const lote = (dp.items || dp.data || []).map(mapV8Lead);
-      if (lote.length) {
-        await salvarLoteBaseV8(lote, token);
-        totalSalvos += lote.length;
-      }
-    }
+    setProgress('progressBarDB','progressTextDB','progressWrapDB', 100,
+      `✅ ${totalSalvo.toLocaleString('pt-BR')} leads salvos`);
+    setStatus('statusDB',
+      `✅ Extração concluída! ${totalSalvo.toLocaleString('pt-BR')} leads salvos no banco de dados.`,
+      'success');
 
-    setProgress('progressBarDB','progressTextDB','progressWrapDB', 100, `✅ ${totalSalvos.toLocaleString('pt-BR')} leads salvos`);
-    setStatus('statusDB', `✅ Base V8 extraída! ${totalSalvos.toLocaleString('pt-BR')} leads salvos no banco de dados.`, 'success');
+    // Limpar senha por segurança
+    document.getElementById('v8Senha').value = '';
+
     document.getElementById('tab-db').classList.add('has-data');
     await buscarBaseV8();
 
   } catch(err) {
-    // Se falhou no auth (sem credenciais), mostrar instrução
-    if (err.message.includes('autenticar')) {
-      setStatus('statusDB', '⚠️ Para extrair a base V8, é necessário que o n8n faça a autenticação. ' +
-        'Use o workflow "V8 - Higienização Margem CLT" e adicione um nó de extração da base, ' +
-        'ou informe suas credenciais V8 no painel.', 'warning');
-    } else {
-      setStatus('statusDB', '❌ Erro: ' + err.message, 'error');
-    }
+    clearInterval(ticker);
+    setStatus('statusDB', '❌ Erro: ' + err.message, 'error');
     setProgress('progressBarDB','progressTextDB','progressWrapDB', 0, 'Falha');
   } finally {
     btn.disabled = false;
     btn.textContent = '🗄️ Extrair e Salvar Base V8';
-  }
-}
-
-function mapV8Lead(item) {
-  return {
-    cpf:        (item.documentNumber || '').replace(/\D/g,''),
-    nome:       item.name || '',
-    margem:     item.availableMarginValue || 0,
-    status:     item.status || 'SUCCESS',
-    descricao:  item.description || '',
-    id_v8:      item.id || '',
-    partner_id: item.partnerId || ''
-  };
-}
-
-async function salvarLoteBaseV8(lote) {
-  // Envia em sub-lotes de 200 para não sobrecarregar
-  const SUB = 200;
-  for (let i = 0; i < lote.length; i += SUB) {
-    const sub = lote.slice(i, i + SUB);
-    const r = await fetch(WH_SALVAR_BASE, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(sub)
-    });
-    if (!r.ok) throw new Error('Erro ao salvar no banco: HTTP ' + r.status);
   }
 }
 
