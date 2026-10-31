@@ -1,446 +1,746 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Hub Crédito - Extrator de Leads</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+<title>Pipeline CLT</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
 
-    body {
-      background: #0d0f14;
-      color: #e2e8f0;
-      font-family: 'Segoe UI', system-ui, sans-serif;
-      min-height: 100vh;
-      padding: 24px 20px;
-    }
+<style>
+  /* ── tokens ── */
+  :root {
+    --bg:        #0d0f14;
+    --bg2:       #161b27;
+    --border:    #1e2535;
+    --fg:        #e2e8f0;
+    --fg2:       #94a3b8;
+    --fg3:       #475569;
+    --accent:    #6366f1;
+    --accent2:   #8b5cf6;
+    --green:     #16a34a;
+    --green-fg:  #86efac;
+    --green-bg:  #14402a;
+    --blue:      #2563eb;
+    --blue-fg:   #93c5fd;
+    --blue-bg:   #1e3a5f;
+    --red-fg:    #fca5a5;
+    --red-bg:    #3b1515;
+    --mono:      'JetBrains Mono', monospace;
+    color-scheme: dark;
+  }
 
-    .container { max-width: 1100px; margin: 0 auto; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
 
-    header {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      margin-bottom: 32px;
-    }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    min-height: 100%;
+    padding-block: 24px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
 
-    header .logo {
-      width: 42px; height: 42px;
-      background: linear-gradient(135deg, #6366f1, #8b5cf6);
-      border-radius: 10px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 20px;
-    }
+  .container { max-width: 1100px; margin: 0 auto; }
 
-    header h1 { font-size: 22px; font-weight: 700; color: #f1f5f9; }
-    header p  { font-size: 13px; color: #64748b; margin-top: 2px; }
+  /* ── header ── */
+  header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 28px;
+  }
+  .logo {
+    width: 42px; height: 42px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; flex-shrink: 0;
+  }
+  header h1 { font-size: 20px; font-weight: 700; color: #f1f5f9; }
+  header p  { font-size: 12px; color: var(--fg3); margin-top: 2px; }
 
-    .card {
-      background: #161b27;
-      border: 1px solid #1e2535;
-      border-radius: 12px;
-      padding: 24px;
-      margin-bottom: 20px;
-    }
+  /* ── tabs ── */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
+  .tab-btn {
+    padding: 10px 20px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--fg2);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-bottom: -1px;
+    transition: color .15s, border-color .15s;
+    display: flex; align-items: center; gap: 7px;
+  }
+  .tab-btn:hover { color: var(--fg); }
+  .tab-btn.active {
+    color: #a5b4fc;
+    border-bottom-color: var(--accent);
+  }
+  .tab-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent2);
+    display: none;
+  }
+  .tab-btn.has-data .tab-dot { display: block; }
 
-    .card h2 { font-size: 15px; font-weight: 600; color: #94a3b8; margin-bottom: 16px; letter-spacing: .05em; text-transform: uppercase; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
 
-    /* Botão principal */
-    #btnExtrair {
-      width: 100%;
-      padding: 14px;
-      background: linear-gradient(135deg, #6366f1, #8b5cf6);
-      border: none;
-      border-radius: 10px;
-      color: #fff;
-      font-size: 15px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: opacity .2s;
-    }
-    #btnExtrair:hover { opacity: .88; }
-    #btnExtrair:disabled { opacity: .45; cursor: not-allowed; }
+  /* ── card ── */
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 16px;
+  }
+  .card-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--fg2);
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    margin-bottom: 14px;
+  }
 
-    /* Status / log */
-    #status {
-      margin-top: 16px;
-      padding: 12px 16px;
-      border-radius: 8px;
-      font-size: 13px;
-      display: none;
-    }
-    #status.info    { background: #1e3a5f; color: #93c5fd; border: 1px solid #2563eb44; }
-    #status.success { background: #14402a; color: #86efac; border: 1px solid #16a34a44; }
-    #status.error   { background: #3b1515; color: #fca5a5; border: 1px solid #dc262644; }
+  /* ── qty buttons ── */
+  .qty-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+  .qty-btn {
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--fg2);
+    transition: all .15s;
+  }
+  .qty-btn:hover { border-color: var(--accent); color: #a5b4fc; }
+  .qty-btn.active { background: #312e81; border-color: var(--accent); color: #c7d2fe; }
 
-    /* Barra de progresso */
-    .progress-wrap { margin-top: 16px; display: none; }
-    .progress-bar-bg {
-      background: #1e2535;
-      border-radius: 999px;
-      height: 8px;
-      overflow: hidden;
-    }
-    .progress-bar-fill {
-      height: 100%;
-      width: 0%;
-      background: linear-gradient(90deg, #6366f1, #8b5cf6);
-      border-radius: 999px;
-      transition: width .4s ease;
-    }
-    .progress-text { font-size: 12px; color: #64748b; margin-top: 6px; text-align: center; }
+  /* ── inputs ── */
+  .input-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .input-num {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--fg);
+    padding: 8px 12px;
+    font-size: 13px;
+    width: 200px;
+    outline: none;
+    transition: border-color .15s;
+  }
+  .input-num:focus { border-color: var(--accent); }
+  .qty-label { font-size: 13px; color: var(--fg3); }
 
-    /* Stats */
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
-      margin-bottom: 20px;
-    }
-    .stat-box {
-      background: #161b27;
-      border: 1px solid #1e2535;
-      border-radius: 10px;
-      padding: 16px;
-      text-align: center;
-    }
-    .stat-box .num { font-size: 28px; font-weight: 700; color: #818cf8; }
-    .stat-box .lbl { font-size: 12px; color: #64748b; margin-top: 4px; }
+  /* textarea para CPFs */
+  .cpf-area {
+    width: 100%;
+    min-height: 110px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--fg);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 10px 12px;
+    outline: none;
+    resize: vertical;
+    transition: border-color .15s;
+    line-height: 1.6;
+  }
+  .cpf-area:focus { border-color: var(--accent); }
+  .cpf-hint { font-size: 11px; color: var(--fg3); margin-top: 6px; }
 
-    /* Botões de download */
-    .dl-btns { display: flex; gap: 10px; margin-bottom: 16px; }
-    .dl-btn {
-      padding: 9px 20px;
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      border: none;
-      transition: opacity .2s;
-    }
-    .dl-btn:disabled { opacity: .35; cursor: not-allowed; }
-    .dl-btn.csv  { background: #16a34a; color: #fff; }
-    .dl-btn.json { background: #2563eb; color: #fff; }
-    .dl-btn:hover:not(:disabled) { opacity: .85; }
+  /* ── botão principal ── */
+  .btn-main {
+    width: 100%;
+    padding: 13px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none;
+    border-radius: 10px;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity .2s;
+    margin-top: 14px;
+  }
+  .btn-main:hover   { opacity: .88; }
+  .btn-main:disabled { opacity: .4; cursor: not-allowed; }
 
-    /* Tabela */
-    .table-wrap { overflow-x: auto; max-height: 460px; overflow-y: auto; border-radius: 8px; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 700px; }
-    thead th {
-      background: #1e2535;
-      color: #94a3b8;
-      padding: 10px 14px;
-      text-align: left;
-      font-weight: 600;
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: .05em;
-      position: sticky; top: 0; z-index: 1;
-    }
-    tbody tr { border-bottom: 1px solid #1a2030; transition: background .15s; }
-    tbody tr:hover { background: #1a2336; }
-    tbody td { padding: 9px 14px; color: #cbd5e1; }
-    tbody td.valor { color: #86efac; font-weight: 600; }
-    tbody td.cpf   { font-family: monospace; font-size: 12px; color: #a5b4fc; }
+  /* ── status ── */
+  .status-box {
+    margin-top: 14px;
+    padding: 11px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    display: none;
+  }
+  .status-box.info    { background: var(--blue-bg);  color: var(--blue-fg);  border: 1px solid #2563eb44; }
+  .status-box.success { background: var(--green-bg); color: var(--green-fg); border: 1px solid #16a34a44; }
+  .status-box.error   { background: var(--red-bg);   color: var(--red-fg);   border: 1px solid #dc262644; }
 
-    /* Botões de quantidade */
-    .qty-btn {
-      padding: 6px 14px;
-      border-radius: 6px;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      border: 1px solid #1e2535;
-      background: #0d0f14;
-      color: #94a3b8;
-      transition: all .15s;
-    }
-    .qty-btn:hover { border-color: #6366f1; color: #a5b4fc; }
-    .qty-btn.active { background: #312e81; border-color: #6366f1; color: #c7d2fe; }
+  /* ── progress ── */
+  .progress-wrap { margin-top: 14px; display: none; }
+  .progress-bg {
+    background: var(--border);
+    border-radius: 999px;
+    height: 7px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 999px;
+    transition: width .4s ease;
+  }
+  .progress-text { font-size: 12px; color: var(--fg3); margin-top: 5px; text-align: center; }
 
-    .empty-state {
-      text-align: center;
-      padding: 48px 20px;
-      color: #334155;
-    }
-    .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
-    .empty-state p { font-size: 14px; }
-  </style>
-</head>
-<body>
+  /* ── stats ── */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .stat-box {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    text-align: center;
+  }
+  .stat-num { font-size: 26px; font-weight: 700; color: #818cf8; font-variant-numeric: tabular-nums; }
+  .stat-lbl { font-size: 11px; color: var(--fg3); margin-top: 3px; }
+
+  /* stats V8 */
+  .stats-v8 {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .stat-box.green .stat-num { color: var(--green-fg); }
+  .stat-box.red   .stat-num { color: var(--red-fg); }
+  .stat-box.yellow .stat-num { color: #fde68a; }
+
+  /* ── download buttons ── */
+  .dl-row { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+  .dl-btn {
+    padding: 8px 18px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: opacity .2s;
+  }
+  .dl-btn:disabled { opacity: .3; cursor: not-allowed; }
+  .dl-btn.csv  { background: var(--green); color: #fff; }
+  .dl-btn.json { background: var(--blue);  color: #fff; }
+  .dl-btn:hover:not(:disabled) { opacity: .82; }
+
+  /* ── table ── */
+  .table-wrap {
+    overflow-x: auto;
+    max-height: 440px;
+    overflow-y: auto;
+    border-radius: 8px;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 640px; }
+  thead th {
+    background: #1e2535;
+    color: var(--fg2);
+    padding: 9px 14px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    position: sticky; top: 0; z-index: 1;
+  }
+  tbody tr { border-bottom: 1px solid #1a2030; transition: background .15s; }
+  tbody tr:hover { background: #1a2336; }
+  tbody td { padding: 8px 14px; color: #cbd5e1; }
+  td.cpf   { font-family: var(--mono); font-size: 11px; color: #a5b4fc; }
+  td.valor { color: var(--green-fg); font-weight: 600; font-variant-numeric: tabular-nums; }
+  td.badge-ok  { color: var(--green-fg); font-weight: 600; }
+  td.badge-no  { color: var(--red-fg); }
+
+  /* ── empty state ── */
+  .empty {
+    text-align: center;
+    padding: 44px 20px;
+    color: var(--fg3);
+  }
+  .empty .icon { font-size: 44px; margin-bottom: 10px; }
+  .empty p { font-size: 13px; }
+
+  /* ── responsivo ── */
+  @media (max-width: 600px) {
+    .stats    { grid-template-columns: repeat(2, 1fr); }
+    .stats-v8 { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 400px) {
+    .stats    { grid-template-columns: 1fr; }
+    .stats-v8 { grid-template-columns: 1fr; }
+  }
+</style>
+
 <div class="container">
 
   <header>
     <div class="logo">📊</div>
     <div>
-      <h1>Hub Crédito — Extrator de Leads</h1>
-      <p>Extração via n8n · Mapa da Mina · Loja 9562</p>
+      <h1>Pipeline CLT — Mapa da Mina</h1>
+      <p>Hub Crédito · V8 Higienização · Loja 9562</p>
     </div>
   </header>
 
-  <!-- Card de ação -->
-  <div class="card">
-    <h2>Extração</h2>
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('hub')" id="tab-hub">
+      <span>🏦 Hub Crédito</span>
+      <span class="tab-dot" id="dot-hub"></span>
+    </button>
+    <button class="tab-btn" onclick="switchTab('v8')" id="tab-v8">
+      <span>🔍 Higienização V8</span>
+      <span class="tab-dot" id="dot-v8"></span>
+    </button>
+  </div>
 
-    <div style="margin-bottom:16px;">
-      <label style="display:block;font-size:12px;color:#64748b;margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em;">Quantidade de leads</label>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
-        <button class="qty-btn" onclick="setQty(100)">100</button>
-        <button class="qty-btn" onclick="setQty(500)">500</button>
-        <button class="qty-btn" onclick="setQty(1000)">1.000</button>
-        <button class="qty-btn" onclick="setQty(5000)">5.000</button>
-        <button class="qty-btn active" onclick="setQty(0)">Todos</button>
+  <!-- ═══════════════════ ABA HUB CRÉDITO ═══════════════════ -->
+  <div class="tab-panel active" id="panel-hub">
+
+    <div class="card">
+      <div class="card-label">Extração de Leads</div>
+
+      <div style="margin-bottom:14px;">
+        <div style="font-size:11px;color:var(--fg3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Quantidade</div>
+        <div class="qty-row">
+          <button class="qty-btn" onclick="setQty(100,this)">100</button>
+          <button class="qty-btn" onclick="setQty(500,this)">500</button>
+          <button class="qty-btn" onclick="setQty(1000,this)">1.000</button>
+          <button class="qty-btn" onclick="setQty(5000,this)">5.000</button>
+          <button class="qty-btn active" onclick="setQty(0,this)">Todos</button>
+        </div>
+        <div class="input-row">
+          <input type="number" id="inputQty" min="1" placeholder="Ou digite um número..."
+            class="input-num" oninput="onQtyInput(this.value)">
+          <span id="qtyLabel" class="qty-label">Todos os leads disponíveis</span>
+        </div>
       </div>
-      <div style="display:flex;align-items:center;gap:10px;">
-        <input type="number" id="inputQty" min="1" placeholder="Ou digite um número..." value=""
-          style="background:#0d0f14;border:1px solid #1e2535;border-radius:8px;color:#e2e8f0;padding:8px 12px;font-size:13px;width:200px;outline:none;"
-          oninput="onQtyInput(this.value)" />
-        <span id="qtyLabel" style="font-size:13px;color:#64748b;">Todos os leads disponíveis</span>
+
+      <button class="btn-main" id="btnExtrair" onclick="iniciarExtracao()">🚀 Iniciar Extração</button>
+
+      <div class="status-box" id="statusHub"></div>
+      <div class="progress-wrap" id="progressWrapHub">
+        <div class="progress-bg"><div class="progress-fill" id="progressBarHub"></div></div>
+        <div class="progress-text" id="progressTextHub">Aguardando...</div>
       </div>
     </div>
 
-    <button id="btnExtrair" onclick="iniciarExtracao()">🚀 Iniciar Extração</button>
-
-    <div id="status"></div>
-
-    <div class="progress-wrap" id="progressWrap">
-      <div class="progress-bar-bg">
-        <div class="progress-bar-fill" id="progressBar"></div>
+    <!-- Stats Hub -->
+    <div class="stats">
+      <div class="stat-box">
+        <div class="stat-num" id="statTotal">—</div>
+        <div class="stat-lbl">Total de Leads</div>
       </div>
-      <div class="progress-text" id="progressText">Aguardando...</div>
+      <div class="stat-box">
+        <div class="stat-num" id="statValor">—</div>
+        <div class="stat-lbl">Valor Total Liberado</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num" id="statTempo">—</div>
+        <div class="stat-lbl">Tempo de Extração</div>
+      </div>
+    </div>
+
+    <!-- Tabela Hub -->
+    <div class="card">
+      <div class="card-label">Leads Extraídos</div>
+      <div class="dl-row">
+        <button class="dl-btn csv"  id="btnCSV"  onclick="baixarCSV()"  disabled>⬇ Baixar CSV</button>
+        <button class="dl-btn json" id="btnJSON" onclick="baixarJSON()" disabled>⬇ Baixar JSON</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th><th>CPF</th><th>Nome</th><th>Matrícula</th>
+              <th>Dt. Nascimento</th><th>Dt. Admissão</th><th>Valor Liberado</th><th>Expiração</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyLeads">
+            <tr><td colspan="8">
+              <div class="empty"><div class="icon">📭</div><p>Clique em "Iniciar Extração" para buscar os leads</p></div>
+            </td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 
-  <!-- Estatísticas -->
-  <div class="stats">
-    <div class="stat-box">
-      <div class="num" id="statTotal">—</div>
-      <div class="lbl">Total de Leads</div>
+  <!-- ═══════════════════ ABA V8 ═══════════════════ -->
+  <div class="tab-panel" id="panel-v8">
+
+    <div class="card">
+      <div class="card-label">CPFs para Higienizar</div>
+
+      <textarea class="cpf-area" id="cpfArea"
+        placeholder="Cole aqui os CPFs — um por linha, ou separados por vírgula/espaço&#10;&#10;Exemplo:&#10;123.456.789-00&#10;98765432100&#10;111.222.333-44"></textarea>
+      <div class="cpf-hint" id="cpfCount">Nenhum CPF detectado</div>
+
+      <button class="btn-main" id="btnHigienizar" onclick="iniciarHigienizacao()">🔍 Higienizar com V8</button>
+
+      <div class="status-box" id="statusV8"></div>
+      <div class="progress-wrap" id="progressWrapV8">
+        <div class="progress-bg"><div class="progress-fill" id="progressBarV8"></div></div>
+        <div class="progress-text" id="progressTextV8">Aguardando...</div>
+      </div>
     </div>
-    <div class="stat-box">
-      <div class="num" id="statValor">—</div>
-      <div class="lbl">Valor Total Liberado</div>
+
+    <!-- Stats V8 -->
+    <div class="stats-v8">
+      <div class="stat-box">
+        <div class="stat-num" id="v8Total">—</div>
+        <div class="stat-lbl">CPFs Enviados</div>
+      </div>
+      <div class="stat-box green">
+        <div class="stat-num" id="v8ComMargem">—</div>
+        <div class="stat-lbl">Com Margem CLT</div>
+      </div>
+      <div class="stat-box red">
+        <div class="stat-num" id="v8SemMargem">—</div>
+        <div class="stat-lbl">Sem Margem / Rejeitados</div>
+      </div>
+      <div class="stat-box yellow">
+        <div class="stat-num" id="v8Taxa">—</div>
+        <div class="stat-lbl">Taxa de Aprovação</div>
+      </div>
     </div>
-    <div class="stat-box">
-      <div class="num" id="statTempo">—</div>
-      <div class="lbl">Tempo de Extração</div>
+
+    <!-- Tabela V8 -->
+    <div class="card">
+      <div class="card-label">Leads com Margem CLT disponível</div>
+      <div class="dl-row">
+        <button class="dl-btn csv"  id="btnV8CSV"  onclick="baixarV8CSV()"  disabled>⬇ Baixar CSV</button>
+        <button class="dl-btn json" id="btnV8JSON" onclick="baixarV8JSON()" disabled>⬇ Baixar JSON</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th><th>CPF</th><th>Nome</th><th>Status</th><th>Margem Disponível</th><th>Descrição</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyV8">
+            <tr><td colspan="6">
+              <div class="empty"><div class="icon">🔍</div><p>Cole os CPFs acima e clique em "Higienizar com V8"</p></div>
+            </td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 
-  <!-- Tabela de resultados -->
-  <div class="card">
-    <h2>Leads Extraídos</h2>
-
-    <div class="dl-btns">
-      <button class="dl-btn csv"  id="btnCSV"  onclick="baixarCSV()"  disabled>⬇ Baixar CSV</button>
-      <button class="dl-btn json" id="btnJSON" onclick="baixarJSON()" disabled>⬇ Baixar JSON</button>
-    </div>
-
-    <div class="table-wrap">
-      <table id="tabelaLeads">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>CPF</th>
-            <th>Nome</th>
-            <th>Matrícula</th>
-            <th>Dt. Nascimento</th>
-            <th>Dt. Admissão</th>
-            <th>Valor Liberado</th>
-            <th>Expiração</th>
-          </tr>
-        </thead>
-        <tbody id="tbodyLeads">
-          <tr>
-            <td colspan="8">
-              <div class="empty-state">
-                <div class="icon">📭</div>
-                <p>Clique em "Iniciar Extração" para buscar os leads via n8n</p>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-</div>
+</div><!-- /container -->
 
 <script>
-  // ⚙️ URL do webhook do n8n — já ativo e aguardando requisições
-  const N8N_WEBHOOK_URL = 'https://rarelookingorca-n8n.cloudfy.live/webhook/hub-credito-leads';
+// ──────────────────────────────────────────────────────────────
+// CONFIGURAÇÃO
+// ──────────────────────────────────────────────────────────────
+const WEBHOOK_HUB = 'https://rarelookingorca-n8n.cloudfy.live/webhook/hub-credito-leads';
+const WEBHOOK_V8  = 'https://rarelookingorca-n8n.cloudfy.live/webhook/v8-higienizacao-clt';
 
-  let leadsData = [];
-  let limiteQty = 0; // 0 = todos
+// ──────────────────────────────────────────────────────────────
+// TABS
+// ──────────────────────────────────────────────────────────────
+function switchTab(name) {
+  ['hub','v8'].forEach(t => {
+    document.getElementById('tab-'+t).classList.toggle('active', t===name);
+    document.getElementById('panel-'+t).classList.toggle('active', t===name);
+  });
+}
 
-  function setQty(n) {
-    limiteQty = n;
-    document.querySelectorAll('.qty-btn').forEach(b => b.classList.remove('active'));
-    event.target.classList.add('active');
-    if (n === 0) {
-      document.getElementById('inputQty').value = '';
-      document.getElementById('qtyLabel').textContent = 'Todos os leads disponíveis';
-    } else {
-      document.getElementById('inputQty').value = n;
-      document.getElementById('qtyLabel').textContent = `Extrair até ${n.toLocaleString('pt-BR')} leads`;
+// ──────────────────────────────────────────────────────────────
+// ABA HUB — helpers
+// ──────────────────────────────────────────────────────────────
+let leadsData = [];
+let limiteQty = 0;
+
+function setQty(n, btn) {
+  limiteQty = n;
+  document.querySelectorAll('.qty-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const inp = document.getElementById('inputQty');
+  const lbl = document.getElementById('qtyLabel');
+  if (n === 0) { inp.value = ''; lbl.textContent = 'Todos os leads disponíveis'; }
+  else         { inp.value = n;  lbl.textContent = `Extrair até ${n.toLocaleString('pt-BR')} leads`; }
+}
+
+function onQtyInput(val) {
+  document.querySelectorAll('.qty-btn').forEach(b => b.classList.remove('active'));
+  const n = parseInt(val) || 0;
+  limiteQty = n;
+  document.getElementById('qtyLabel').textContent =
+    n ? `Extrair até ${n.toLocaleString('pt-BR')} leads` : 'Todos os leads disponíveis';
+}
+
+function setStatus(id, msg, tipo) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.className = 'status-box ' + tipo;
+  el.style.display = 'block';
+}
+
+function setProgress(barId, textId, wrapId, pct, texto) {
+  document.getElementById(wrapId).style.display = 'block';
+  document.getElementById(barId).style.width = pct + '%';
+  document.getElementById(textId).textContent = texto;
+}
+
+function fmtBRL(val) {
+  return (val || 0).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
+}
+
+async function iniciarExtracao() {
+  const btn = document.getElementById('btnExtrair');
+  btn.disabled = true;
+  btn.textContent = '⏳ Extraindo...';
+  document.getElementById('btnCSV').disabled = true;
+  document.getElementById('btnJSON').disabled = true;
+  leadsData = [];
+  document.getElementById('tbodyLeads').innerHTML = '';
+  ['statTotal','statValor','statTempo'].forEach(id => document.getElementById(id).textContent = '—');
+
+  setStatus('statusHub', '🔐 Conectando ao Hub Crédito via n8n...', 'info');
+  setProgress('progressBarHub','progressTextHub','progressWrapHub', 5, 'Autenticando...');
+
+  const inicio = Date.now();
+  try {
+    const qtyTxt = limiteQty ? `até ${limiteQty.toLocaleString('pt-BR')} leads` : 'todos os leads';
+    setStatus('statusHub', `📡 Buscando ${qtyTxt}...`, 'info');
+    setProgress('progressBarHub','progressTextHub','progressWrapHub', 10, 'n8n buscando leads...');
+
+    const resp = await fetch(WEBHOOK_HUB, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ source: 'html_extractor', timestamp: new Date().toISOString(), limite: limiteQty || null })
+    });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+
+    setProgress('progressBarHub','progressTextHub','progressWrapHub', 80, 'Processando resposta...');
+    const data = await resp.json();
+    if (!data.success) throw new Error(data.error || 'Erro desconhecido no n8n');
+
+    leadsData = data.leads || [];
+    const tempo = ((Date.now() - inicio) / 1000).toFixed(1);
+    const valorTotal = leadsData.reduce((s, l) => s + (l.valorLiberado || 0), 0);
+
+    document.getElementById('statTotal').textContent = leadsData.length.toLocaleString('pt-BR');
+    document.getElementById('statValor').textContent = fmtBRL(valorTotal);
+    document.getElementById('statTempo').textContent = tempo + 's';
+
+    renderTabelaHub(leadsData.slice(0, 1000));
+    setProgress('progressBarHub','progressTextHub','progressWrapHub', 100, `✅ ${leadsData.length.toLocaleString('pt-BR')} leads`);
+    setStatus('statusHub', `✅ Extração concluída! ${leadsData.length.toLocaleString('pt-BR')} leads em ${tempo}s${leadsData.length > 1000 ? ' · Exibindo primeiros 1.000' : ''}`, 'success');
+    document.getElementById('btnCSV').disabled  = false;
+    document.getElementById('btnJSON').disabled = false;
+    document.getElementById('tab-hub').classList.add('has-data');
+
+  } catch(err) {
+    setStatus('statusHub', '❌ Erro: ' + err.message, 'error');
+    setProgress('progressBarHub','progressTextHub','progressWrapHub', 0, 'Falha');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔄 Extrair Novamente';
+  }
+}
+
+function renderTabelaHub(leads) {
+  document.getElementById('tbodyLeads').innerHTML = leads.map((l,i) => `
+    <tr>
+      <td>${i+1}</td>
+      <td class="cpf">${l.cpf||'—'}</td>
+      <td>${l.nome||'—'}</td>
+      <td>${l.matricula||'—'}</td>
+      <td>${l.dataNascimento||'—'}</td>
+      <td>${l.dataAdmissao||'—'}</td>
+      <td class="valor">${fmtBRL(l.valorLiberado)}</td>
+      <td>${l.hubExpiracao||'—'}</td>
+    </tr>`).join('');
+}
+
+function baixarCSV() {
+  if (!leadsData.length) return;
+  const header = 'CPF,Nome,Matrícula,Dt. Nascimento,Dt. Admissão,Valor Liberado,Hub ID,Expiração';
+  const rows = leadsData.map(l => [
+    l.cpf||'', `"${(l.nome||'').replace(/"/g,'""')}"`,
+    `"${(l.matricula||'').replace(/"/g,'""')}"`,
+    l.dataNascimento||'', l.dataAdmissao||'',
+    l.valorLiberado||0, l.hubId||'', l.hubExpiracao||''
+  ].join(','));
+  dlFile('﻿' + [header,...rows].join('\n'), `hub_leads_${ts()}.csv`, 'text/csv;charset=utf-8');
+}
+
+function baixarJSON() {
+  if (!leadsData.length) return;
+  dlFile(JSON.stringify({ exportedAt: new Date().toISOString(), total: leadsData.length, leads: leadsData }, null, 2),
+    `hub_leads_${ts()}.json`, 'application/json');
+}
+
+// ──────────────────────────────────────────────────────────────
+// ABA V8 — helpers
+// ──────────────────────────────────────────────────────────────
+let v8Leads = [];
+
+const cpfArea = document.getElementById('cpfArea');
+cpfArea.addEventListener('input', atualizarContagem);
+function parseCPFs(txt) {
+  return [...new Set(
+    txt.split(/[\n,;\s]+/)
+       .map(s => s.replace(/\D/g,''))
+       .filter(s => s.length >= 10)
+  )];
+}
+function atualizarContagem() {
+  const cpfs = parseCPFs(cpfArea.value);
+  const el = document.getElementById('cpfCount');
+  el.textContent = cpfs.length
+    ? `${cpfs.length} CPF${cpfs.length>1?'s':''} detectado${cpfs.length>1?'s':''}`
+    : 'Nenhum CPF detectado';
+  el.style.color = cpfs.length ? 'var(--green-fg)' : 'var(--fg3)';
+}
+
+async function iniciarHigienizacao() {
+  const cpfs = parseCPFs(cpfArea.value);
+  if (!cpfs.length) {
+    setStatus('statusV8', '⚠️ Cole pelo menos um CPF válido antes de higienizar.', 'error');
+    document.getElementById('statusV8').style.display = 'block';
+    return;
+  }
+
+  const btn = document.getElementById('btnHigienizar');
+  btn.disabled = true;
+  btn.textContent = '⏳ Higienizando...';
+  document.getElementById('btnV8CSV').disabled  = true;
+  document.getElementById('btnV8JSON').disabled = true;
+  v8Leads = [];
+  document.getElementById('tbodyV8').innerHTML = '';
+  ['v8Total','v8ComMargem','v8SemMargem','v8Taxa'].forEach(id => document.getElementById(id).textContent = '—');
+
+  setStatus('statusV8', `🔐 Enviando ${cpfs.length} CPF${cpfs.length>1?'s':''} para V8...`, 'info');
+  setProgress('progressBarV8','progressTextV8','progressWrapV8', 5, 'Autenticando na V8...');
+
+  const inicio = Date.now();
+  try {
+    setProgress('progressBarV8','progressTextV8','progressWrapV8', 15, `Consultando ${cpfs.length} CPFs...`);
+
+    const resp = await fetch(WEBHOOK_V8, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cpfs })
+    });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+
+    setProgress('progressBarV8','progressTextV8','progressWrapV8', 85, 'Processando resultados...');
+    const data = await resp.json();
+
+    const tempo = ((Date.now() - inicio) / 1000).toFixed(1);
+    const comMargem  = data.comMargem  || 0;
+    const semMargem  = data.semMargem  || 0;
+    const total      = data.total      || cpfs.length;
+    const taxa       = total > 0 ? ((comMargem / total) * 100).toFixed(0) + '%' : '0%';
+    v8Leads = data.leads || [];
+
+    document.getElementById('v8Total').textContent     = total.toLocaleString('pt-BR');
+    document.getElementById('v8ComMargem').textContent = comMargem.toLocaleString('pt-BR');
+    document.getElementById('v8SemMargem').textContent = semMargem.toLocaleString('pt-BR');
+    document.getElementById('v8Taxa').textContent      = taxa;
+
+    renderTabelaV8(v8Leads);
+    setProgress('progressBarV8','progressTextV8','progressWrapV8', 100, `✅ ${comMargem} leads com margem`);
+    setStatus('statusV8',
+      `✅ Higienização concluída em ${tempo}s · ${comMargem} de ${total} CPFs têm margem CLT disponível`,
+      'success');
+
+    if (v8Leads.length) {
+      document.getElementById('btnV8CSV').disabled  = false;
+      document.getElementById('btnV8JSON').disabled = false;
+      document.getElementById('tab-v8').classList.add('has-data');
     }
+
+  } catch(err) {
+    setStatus('statusV8', '❌ Erro: ' + err.message, 'error');
+    setProgress('progressBarV8','progressTextV8','progressWrapV8', 0, 'Falha');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔍 Higienizar com V8';
   }
+}
 
-  function onQtyInput(val) {
-    document.querySelectorAll('.qty-btn').forEach(b => b.classList.remove('active'));
-    const n = parseInt(val) || 0;
-    limiteQty = n;
-    if (!n) {
-      document.getElementById('qtyLabel').textContent = 'Todos os leads disponíveis';
-    } else {
-      document.getElementById('qtyLabel').textContent = `Extrair até ${n.toLocaleString('pt-BR')} leads`;
-    }
+function renderTabelaV8(leads) {
+  if (!leads.length) {
+    document.getElementById('tbodyV8').innerHTML = `
+      <tr><td colspan="6">
+        <div class="empty"><div class="icon">❌</div><p>Nenhum lead com margem CLT disponível nesta lista</p></div>
+      </td></tr>`;
+    return;
   }
+  document.getElementById('tbodyV8').innerHTML = leads.map((l,i) => `
+    <tr>
+      <td>${i+1}</td>
+      <td class="cpf">${l.documentNumber||l.cpf||'—'}</td>
+      <td>${l.name||l.nome||'—'}</td>
+      <td class="badge-ok">${l.status||'APROVADO'}</td>
+      <td class="valor">${fmtBRL(l.availableMarginValue)}</td>
+      <td style="color:var(--fg2);font-size:11px">${l.description||'—'}</td>
+    </tr>`).join('');
+}
 
-  function setStatus(msg, tipo = 'info') {
-    const el = document.getElementById('status');
-    el.textContent = msg;
-    el.className = tipo;
-    el.style.display = 'block';
-  }
+function baixarV8CSV() {
+  if (!v8Leads.length) return;
+  const header = 'CPF,Nome,Status,Margem Disponível,Descrição';
+  const rows = v8Leads.map(l => [
+    l.documentNumber||l.cpf||'',
+    `"${((l.name||l.nome||'').replace(/"/g,'""'))}"`,
+    l.status||'',
+    l.availableMarginValue||0,
+    `"${((l.description||'').replace(/"/g,'""'))}"`
+  ].join(','));
+  dlFile('﻿' + [header,...rows].join('\n'), `v8_leads_clt_${ts()}.csv`, 'text/csv;charset=utf-8');
+}
 
-  function setProgresso(pct, texto) {
-    const wrap = document.getElementById('progressWrap');
-    const bar  = document.getElementById('progressBar');
-    const txt  = document.getElementById('progressText');
-    wrap.style.display = 'block';
-    bar.style.width = pct + '%';
-    txt.textContent  = texto;
-  }
+function baixarV8JSON() {
+  if (!v8Leads.length) return;
+  dlFile(JSON.stringify({ exportedAt: new Date().toISOString(), total: v8Leads.length, leads: v8Leads }, null, 2),
+    `v8_leads_clt_${ts()}.json`, 'application/json');
+}
 
-  function fmtBRL(val) {
-    return (val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-  }
-
-  async function iniciarExtracao() {
-    const btn = document.getElementById('btnExtrair');
-    btn.disabled = true;
-    btn.textContent = '⏳ Extraindo...';
-
-    document.getElementById('btnCSV').disabled  = true;
-    document.getElementById('btnJSON').disabled = true;
-
-    leadsData = [];
-    document.getElementById('tbodyLeads').innerHTML = '';
-    document.getElementById('statTotal').textContent = '—';
-    document.getElementById('statValor').textContent = '—';
-    document.getElementById('statTempo').textContent = '—';
-
-    setStatus('🔐 Fazendo login no Hub Crédito via n8n...', 'info');
-    setProgresso(5, 'Autenticando...');
-
-    const inicio = Date.now();
-
-    try {
-      // O n8n faz login, pagina tudo e devolve os leads
-      const qtyTxt = limiteQty ? `até ${limiteQty.toLocaleString('pt-BR')} leads` : 'todos os leads';
-      setStatus(`📡 Buscando ${qtyTxt} via n8n...`, 'info');
-      setProgresso(10, 'n8n buscando leads...');
-
-      const payload = {
-        source: 'html_extractor',
-        timestamp: new Date().toISOString(),
-        limite: limiteQty || null   // null = buscar todos
-      };
-
-      const resp = await fetch(N8N_WEBHOOK_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      if (!resp.ok) {
-        throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
-      }
-
-      setProgresso(80, 'Processando resposta...');
-      const data = await resp.json();
-
-      if (!data.success) {
-        throw new Error(data.error || 'Erro desconhecido no n8n');
-      }
-
-      leadsData = data.leads || [];
-      const tempo = ((Date.now() - inicio) / 1000).toFixed(1);
-
-      // Stats
-      const valorTotal = leadsData.reduce((s, l) => s + (l.valorLiberado || 0), 0);
-      document.getElementById('statTotal').textContent = leadsData.length.toLocaleString('pt-BR');
-      document.getElementById('statValor').textContent = fmtBRL(valorTotal);
-      document.getElementById('statTempo').textContent = tempo + 's';
-
-      // Renderiza tabela (máx 1000 linhas para performance)
-      renderTabela(leadsData.slice(0, 1000));
-
-      setProgresso(100, `✅ ${leadsData.length.toLocaleString('pt-BR')} leads extraídos`);
-      setStatus(`✅ Extração concluída! ${leadsData.length.toLocaleString('pt-BR')} leads em ${tempo}s${leadsData.length > 1000 ? ' · Exibindo primeiros 1.000' : ''}`, 'success');
-
-      document.getElementById('btnCSV').disabled  = false;
-      document.getElementById('btnJSON').disabled = false;
-
-    } catch (err) {
-      setStatus('❌ Erro: ' + err.message, 'error');
-      setProgresso(0, 'Falha na extração');
-    } finally {
-      btn.disabled = false;
-      btn.textContent = '🔄 Extrair Novamente';
-    }
-  }
-
-  function renderTabela(leads) {
-    const tbody = document.getElementById('tbodyLeads');
-    tbody.innerHTML = leads.map((l, i) => `
-      <tr>
-        <td>${i + 1}</td>
-        <td class="cpf">${l.cpf || '—'}</td>
-        <td>${l.nome || '—'}</td>
-        <td>${l.matricula || '—'}</td>
-        <td>${l.dataNascimento || '—'}</td>
-        <td>${l.dataAdmissao || '—'}</td>
-        <td class="valor">${fmtBRL(l.valorLiberado)}</td>
-        <td>${l.hubExpiracao || '—'}</td>
-      </tr>
-    `).join('');
-  }
-
-  function baixarCSV() {
-    if (!leadsData.length) return;
-    const header = 'CPF,Nome,Matrícula,Dt. Nascimento,Dt. Admissão,Valor Liberado,Hub ID,Expiração';
-    const rows = leadsData.map(l => [
-      l.cpf || '',
-      `"${(l.nome || '').replace(/"/g, '""')}"`,
-      `"${(l.matricula || '').replace(/"/g, '""')}"`,
-      l.dataNascimento || '',
-      l.dataAdmissao   || '',
-      l.valorLiberado  || 0,
-      l.hubId          || '',
-      l.hubExpiracao   || ''
-    ].join(','));
-
-    const csv  = '﻿' + [header, ...rows].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href = url; a.download = `hub_leads_${new Date().toISOString().slice(0,10)}.csv`;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }
-
-  function baixarJSON() {
-    if (!leadsData.length) return;
-    const json = JSON.stringify({ exportedAt: new Date().toISOString(), total: leadsData.length, leads: leadsData }, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href = url; a.download = `hub_leads_${new Date().toISOString().slice(0,10)}.json`;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }
+// ──────────────────────────────────────────────────────────────
+// UTILS
+// ──────────────────────────────────────────────────────────────
+function ts() { return new Date().toISOString().slice(0,10); }
+function dlFile(content, name, mime) {
+  const blob = new Blob([content], { type: mime });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
 </script>
-</body>
-</html>
