@@ -576,16 +576,28 @@
 
     <!-- Extração da base completa V8 -->
     <div class="card">
-      <div class="card-label">Extrair Base Completa V8 SUCCESS</div>
+      <div class="card-label">Extrair Base V8 SUCCESS</div>
       <p style="font-size:13px;color:var(--fg2);margin-bottom:14px;">
-        A extração roda no servidor n8n — busca todas as páginas da V8 e salva no banco automaticamente.
+        A extração roda no servidor n8n. Escolha quantos leads quer salvar no banco.
       </p>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;">
-        <button class="btn-main" id="btnExtrairBaseV8" onclick="extrairBaseV8()" style="margin-top:0;flex:1;min-width:200px;">
-          🗄️ Extrair e Salvar Base V8
+      <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:14px;">
+        <div style="flex:1;min-width:180px;">
+          <label style="font-size:11px;color:var(--fg3);display:block;margin-bottom:5px;">Quantidade de leads</label>
+          <select id="qtdExtrair" class="search-input" style="width:100%">
+            <option value="100">100 leads (10 páginas)</option>
+            <option value="500">500 leads (50 páginas)</option>
+            <option value="1000">1.000 leads (100 páginas)</option>
+            <option value="2000">2.000 leads (200 páginas)</option>
+            <option value="5000">5.000 leads (500 páginas)</option>
+            <option value="10000">10.000 leads (1.000 páginas)</option>
+            <option value="14395">Todos — 14.395 leads (1.440 páginas)</option>
+          </select>
+        </div>
+        <button class="btn-main" id="btnExtrairBaseV8" onclick="extrairBaseV8()" style="margin-top:0;white-space:nowrap;">
+          🗄️ Extrair e Salvar
         </button>
-        <button class="btn-secondary" id="btnVerQtdBase" onclick="verQtdBase()" style="margin-top:0;">
-          📊 Ver quantidade salva
+        <button class="btn-secondary" id="btnVerQtdBase" onclick="verQtdBase()" style="margin-top:0;white-space:nowrap;">
+          📊 Ver salvos
         </button>
       </div>
       <div class="status-box" id="statusDB"></div>
@@ -1107,13 +1119,15 @@ function baixarV8JSON() {
 let dbLeads = [], dbPagina = 1, dbTotal = 0, dbBusca = '';
 
 async function extrairBaseV8() {
+  const qtd = parseInt(document.getElementById('qtdExtrair').value) || 1000;
+  const totalPaginas = Math.ceil(qtd / 10);
 
   const btn = document.getElementById('btnExtrairBaseV8');
   btn.disabled = true;
   btn.textContent = '⏳ Extraindo...';
 
   setStatus('statusDB',
-    '🔐 Enviando para o n8n... A extração das 144 páginas roda no servidor e pode levar alguns minutos. Aguarde.',
+    `🔐 Enviando para o n8n... Buscando ${qtd.toLocaleString('pt-BR')} leads (${totalPaginas} páginas). Aguarde.`,
     'info');
   setProgress('progressBarDB','progressTextDB','progressWrapDB', 10, 'n8n autenticando na V8...');
 
@@ -1130,7 +1144,7 @@ async function extrairBaseV8() {
     const resp = await fetch(WH_EXTRAIR_BASE, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({})
+      body: JSON.stringify({ limite: qtd })
     });
 
     clearInterval(ticker);
@@ -1149,7 +1163,7 @@ async function extrairBaseV8() {
 
     // Poll: checar quantidade no banco a cada 10s
     let pollCount = 0;
-    const META = 14395;
+    const META = qtd;
     const pollInterval = setInterval(async () => {
       pollCount++;
       try {
