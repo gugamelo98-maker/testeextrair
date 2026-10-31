@@ -578,18 +578,8 @@
     <div class="card">
       <div class="card-label">Extrair Base Completa V8 SUCCESS</div>
       <p style="font-size:13px;color:var(--fg2);margin-bottom:14px;">
-        A extração é feita pelo servidor n8n (sem limitação de CORS). Informe suas credenciais V8 abaixo — elas são enviadas diretamente ao n8n e não são armazenadas no painel.
+        A extração roda no servidor n8n — busca todas as páginas da V8 e salva no banco automaticamente.
       </p>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
-        <div>
-          <label style="font-size:11px;color:var(--fg3);display:block;margin-bottom:5px;">Usuário / E-mail V8</label>
-          <input type="email" id="v8Usuario" class="search-input" style="width:100%" placeholder="seu@email.com" value="gustavo.envizo@gmail.com">
-        </div>
-        <div>
-          <label style="font-size:11px;color:var(--fg3);display:block;margin-bottom:5px;">Senha V8</label>
-          <input type="password" id="v8Senha" class="search-input" style="width:100%" placeholder="••••••••">
-        </div>
-      </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;">
         <button class="btn-main" id="btnExtrairBaseV8" onclick="extrairBaseV8()" style="margin-top:0;flex:1;min-width:200px;">
           🗄️ Extrair e Salvar Base V8
@@ -1117,14 +1107,6 @@ function baixarV8JSON() {
 let dbLeads = [], dbPagina = 1, dbTotal = 0, dbBusca = '';
 
 async function extrairBaseV8() {
-  const usuario = (document.getElementById('v8Usuario').value || '').trim();
-  const senha   = (document.getElementById('v8Senha').value   || '').trim();
-
-  if (!usuario || !senha) {
-    setStatus('statusDB', '⚠️ Informe seu usuário e senha da V8 para continuar.', 'warning');
-    document.getElementById('statusDB').style.display = 'block';
-    return;
-  }
 
   const btn = document.getElementById('btnExtrairBaseV8');
   btn.disabled = true;
@@ -1148,7 +1130,7 @@ async function extrairBaseV8() {
     const resp = await fetch(WH_EXTRAIR_BASE, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ usuario, senha })
+      body: JSON.stringify({})
     });
 
     clearInterval(ticker);
@@ -1159,7 +1141,6 @@ async function extrairBaseV8() {
     }
 
     // n8n com onReceived responde imediatamente — iniciar poll de progresso
-    document.getElementById('v8Senha').value = '';
     document.getElementById('tab-db').classList.add('has-data');
 
     setStatus('statusDB',
