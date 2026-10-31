@@ -21,6 +21,8 @@
     --blue-bg:   #1e3a5f;
     --red-fg:    #fca5a5;
     --red-bg:    #3b1515;
+    --yellow-fg: #fde68a;
+    --yellow-bg: #3b2e0a;
     --mono:      'JetBrains Mono', monospace;
     color-scheme: dark;
   }
@@ -64,9 +66,10 @@
     gap: 4px;
     border-bottom: 1px solid var(--border);
     margin-bottom: 24px;
+    flex-wrap: wrap;
   }
   .tab-btn {
-    padding: 10px 20px;
+    padding: 10px 18px;
     background: none;
     border: none;
     border-bottom: 2px solid transparent;
@@ -77,6 +80,7 @@
     margin-bottom: -1px;
     transition: color .15s, border-color .15s;
     display: flex; align-items: center; gap: 7px;
+    white-space: nowrap;
   }
   .tab-btn:hover { color: var(--fg); }
   .tab-btn.active {
@@ -143,6 +147,31 @@
   .input-num:focus { border-color: var(--accent); }
   .qty-label { font-size: 13px; color: var(--fg3); }
 
+  .search-input {
+    flex: 1;
+    min-width: 180px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--fg);
+    padding: 9px 14px;
+    font-size: 13px;
+    outline: none;
+    transition: border-color .15s;
+  }
+  .search-input:focus { border-color: var(--accent); }
+
+  select.filter-sel {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--fg2);
+    padding: 9px 14px;
+    font-size: 13px;
+    outline: none;
+    cursor: pointer;
+  }
+
   /* textarea para CPFs */
   .cpf-area {
     width: 100%;
@@ -194,6 +223,21 @@
   .btn-main:hover   { opacity: .88; }
   .btn-main:disabled { opacity: .4; cursor: not-allowed; }
 
+  .btn-secondary {
+    padding: 10px 20px;
+    background: #1e2535;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--fg2);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .15s;
+    margin-top: 10px;
+  }
+  .btn-secondary:hover { border-color: var(--accent); color: #a5b4fc; }
+  .btn-secondary:disabled { opacity: .4; cursor: not-allowed; }
+
   /* ── status ── */
   .status-box {
     margin-top: 14px;
@@ -202,9 +246,10 @@
     font-size: 13px;
     display: none;
   }
-  .status-box.info    { background: var(--blue-bg);  color: var(--blue-fg);  border: 1px solid #2563eb44; }
-  .status-box.success { background: var(--green-bg); color: var(--green-fg); border: 1px solid #16a34a44; }
-  .status-box.error   { background: var(--red-bg);   color: var(--red-fg);   border: 1px solid #dc262644; }
+  .status-box.info    { background: var(--blue-bg);   color: var(--blue-fg);   border: 1px solid #2563eb44; }
+  .status-box.success { background: var(--green-bg);  color: var(--green-fg);  border: 1px solid #16a34a44; }
+  .status-box.error   { background: var(--red-bg);    color: var(--red-fg);    border: 1px solid #dc262644; }
+  .status-box.warning { background: var(--yellow-bg); color: var(--yellow-fg); border: 1px solid #ca8a0444; }
 
   /* ── progress ── */
   .progress-wrap { margin-top: 14px; display: none; }
@@ -230,6 +275,12 @@
     gap: 12px;
     margin-bottom: 16px;
   }
+  .stats-4 {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+  }
   .stat-box {
     background: var(--bg2);
     border: 1px solid var(--border);
@@ -239,20 +290,12 @@
   }
   .stat-num { font-size: 26px; font-weight: 700; color: #818cf8; font-variant-numeric: tabular-nums; }
   .stat-lbl { font-size: 11px; color: var(--fg3); margin-top: 3px; }
-
-  /* stats V8 */
-  .stats-v8 {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 12px;
-    margin-bottom: 16px;
-  }
-  .stat-box.green .stat-num { color: var(--green-fg); }
-  .stat-box.red   .stat-num { color: var(--red-fg); }
-  .stat-box.yellow .stat-num { color: #fde68a; }
+  .stat-box.green  .stat-num { color: var(--green-fg); }
+  .stat-box.red    .stat-num { color: var(--red-fg); }
+  .stat-box.yellow .stat-num { color: var(--yellow-fg); }
 
   /* ── download buttons ── */
-  .dl-row { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+  .dl-row { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
   .dl-btn {
     padding: 8px 18px;
     border-radius: 8px;
@@ -263,8 +306,9 @@
     transition: opacity .2s;
   }
   .dl-btn:disabled { opacity: .3; cursor: not-allowed; }
-  .dl-btn.csv  { background: var(--green); color: #fff; }
-  .dl-btn.json { background: var(--blue);  color: #fff; }
+  .dl-btn.csv    { background: var(--green); color: #fff; }
+  .dl-btn.json   { background: var(--blue);  color: #fff; }
+  .dl-btn.purple { background: #312e81; color: #c7d2fe; border: 1px solid #6366f1; }
   .dl-btn:hover:not(:disabled) { opacity: .82; }
 
   /* ── table ── */
@@ -289,10 +333,35 @@
   tbody tr { border-bottom: 1px solid #1a2030; transition: background .15s; }
   tbody tr:hover { background: #1a2336; }
   tbody td { padding: 8px 14px; color: #cbd5e1; }
-  td.cpf   { font-family: var(--mono); font-size: 11px; color: #a5b4fc; }
-  td.valor { color: var(--green-fg); font-weight: 600; font-variant-numeric: tabular-nums; }
-  td.badge-ok  { color: var(--green-fg); font-weight: 600; }
-  td.badge-no  { color: var(--red-fg); }
+  td.cpf      { font-family: var(--mono); font-size: 11px; color: #a5b4fc; }
+  td.valor    { color: var(--green-fg); font-weight: 600; font-variant-numeric: tabular-nums; }
+  td.badge-ok { color: var(--green-fg); font-weight: 600; }
+  td.badge-no { color: var(--red-fg); }
+  td.badge-match { background: #14402a; color: var(--green-fg); border-radius: 4px; font-size: 10px; font-weight: 700; text-align: center; }
+
+  /* paginação */
+  .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 14px;
+    flex-wrap: wrap;
+  }
+  .page-btn {
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--fg2);
+    transition: all .15s;
+  }
+  .page-btn:hover:not(:disabled) { border-color: var(--accent); color: #a5b4fc; }
+  .page-btn:disabled { opacity: .3; cursor: not-allowed; }
+  .page-info { font-size: 12px; color: var(--fg3); }
 
   /* ── empty state ── */
   .empty {
@@ -303,14 +372,26 @@
   .empty .icon { font-size: 44px; margin-bottom: 10px; }
   .empty p { font-size: 13px; }
 
+  /* banner info */
+  .info-banner {
+    background: var(--blue-bg);
+    border: 1px solid #2563eb44;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 13px;
+    color: var(--blue-fg);
+    margin-bottom: 16px;
+  }
+
   /* ── responsivo ── */
-  @media (max-width: 600px) {
-    .stats    { grid-template-columns: repeat(2, 1fr); }
-    .stats-v8 { grid-template-columns: repeat(2, 1fr); }
+  @media (max-width: 700px) {
+    .stats   { grid-template-columns: repeat(2, 1fr); }
+    .stats-4 { grid-template-columns: repeat(2, 1fr); }
   }
   @media (max-width: 400px) {
-    .stats    { grid-template-columns: 1fr; }
-    .stats-v8 { grid-template-columns: 1fr; }
+    .stats   { grid-template-columns: 1fr; }
+    .stats-4 { grid-template-columns: 1fr; }
+    .tab-btn { padding: 8px 12px; font-size: 12px; }
   }
 </style>
 
@@ -320,7 +401,7 @@
     <div class="logo">📊</div>
     <div>
       <h1>Pipeline CLT — Mapa da Mina</h1>
-      <p>Hub Crédito · V8 Higienização · Loja 9562</p>
+      <p>Hub Crédito · V8 Higienização · Base de Dados · Meus Leads</p>
     </div>
   </header>
 
@@ -328,11 +409,19 @@
   <div class="tabs">
     <button class="tab-btn active" onclick="switchTab('hub')" id="tab-hub">
       <span>🏦 Hub Crédito</span>
-      <span class="tab-dot" id="dot-hub"></span>
+      <span class="tab-dot"></span>
     </button>
     <button class="tab-btn" onclick="switchTab('v8')" id="tab-v8">
       <span>🔍 Higienização V8</span>
-      <span class="tab-dot" id="dot-v8"></span>
+      <span class="tab-dot"></span>
+    </button>
+    <button class="tab-btn" onclick="switchTab('db')" id="tab-db">
+      <span>🗄️ Base de Dados V8</span>
+      <span class="tab-dot"></span>
+    </button>
+    <button class="tab-btn" onclick="switchTab('meusleads')" id="tab-meusleads">
+      <span>📋 Meus Leads</span>
+      <span class="tab-dot"></span>
     </button>
   </div>
 
@@ -387,9 +476,10 @@
     <div class="card">
       <div class="card-label">Leads Extraídos</div>
       <div class="dl-row">
-        <button class="dl-btn csv"  id="btnCSV"  onclick="baixarCSV()"  disabled>⬇ Baixar CSV</button>
-        <button class="dl-btn json" id="btnJSON" onclick="baixarJSON()" disabled>⬇ Baixar JSON</button>
-        <button class="dl-btn" id="btnCopiarCPFs" onclick="copiarCPFs()" disabled style="background:#312e81;color:#c7d2fe;border:1px solid #6366f1;">📋 Copiar CPFs</button>
+        <button class="dl-btn csv"    id="btnCSV"        onclick="baixarCSV()"        disabled>⬇ Baixar CSV</button>
+        <button class="dl-btn json"   id="btnJSON"       onclick="baixarJSON()"       disabled>⬇ Baixar JSON</button>
+        <button class="dl-btn purple" id="btnCopiarCPFs" onclick="copiarCPFs()"       disabled>📋 Copiar CPFs</button>
+        <button class="dl-btn"        id="btnSalvarHub"  onclick="salvarHubNoDB()"    disabled style="background:#0f2a1a;color:var(--green-fg);border:1px solid var(--green)">💾 Salvar em Meus Leads</button>
       </div>
       <div class="table-wrap">
         <table>
@@ -409,7 +499,7 @@
     </div>
   </div>
 
-  <!-- ═══════════════════ ABA V8 ═══════════════════ -->
+  <!-- ═══════════════════ ABA V8 HIGIENIZAÇÃO ═══════════════════ -->
   <div class="tab-panel" id="panel-v8">
 
     <div class="card">
@@ -433,7 +523,7 @@
     </div>
 
     <!-- Stats V8 -->
-    <div class="stats-v8">
+    <div class="stats-4">
       <div class="stat-box">
         <div class="stat-num" id="v8Total">—</div>
         <div class="stat-lbl">CPFs Enviados</div>
@@ -456,8 +546,9 @@
     <div class="card">
       <div class="card-label">Leads com Margem CLT disponível</div>
       <div class="dl-row">
-        <button class="dl-btn csv"  id="btnV8CSV"  onclick="baixarV8CSV()"  disabled>⬇ Baixar CSV</button>
-        <button class="dl-btn json" id="btnV8JSON" onclick="baixarV8JSON()" disabled>⬇ Baixar JSON</button>
+        <button class="dl-btn csv"  id="btnV8CSV"        onclick="baixarV8CSV()"      disabled>⬇ Baixar CSV</button>
+        <button class="dl-btn json" id="btnV8JSON"       onclick="baixarV8JSON()"     disabled>⬇ Baixar JSON</button>
+        <button class="dl-btn"      id="btnSalvarV8Hig"  onclick="salvarV8HigNoDB()"  disabled style="background:#0f2a1a;color:var(--green-fg);border:1px solid var(--green)">💾 Salvar em Meus Leads</button>
       </div>
       <div class="table-wrap">
         <table>
@@ -476,23 +567,206 @@
     </div>
   </div>
 
+  <!-- ═══════════════════ ABA BASE DE DADOS V8 ═══════════════════ -->
+  <div class="tab-panel" id="panel-db">
+
+    <div class="info-banner">
+      📌 Aqui ficam <strong>todos os leads V8 SUCCESS</strong> — todos que você já simulou e tiveram margem aprovada. Use para consulta e cruzamento com Meus Leads.
+    </div>
+
+    <!-- Extração da base completa V8 -->
+    <div class="card">
+      <div class="card-label">Extrair Base Completa V8 SUCCESS</div>
+      <p style="font-size:13px;color:var(--fg2);margin-bottom:14px;">
+        Carrega os 14.386 leads SUCCESS da V8 (todos que já simulou) e salva no banco de dados.
+        Pode levar alguns minutos pela quantidade de páginas.
+      </p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn-main" id="btnExtrairBaseV8" onclick="extrairBaseV8()" style="margin-top:0;flex:1;min-width:200px;">
+          🗄️ Extrair e Salvar Base V8
+        </button>
+        <button class="btn-secondary" id="btnVerQtdBase" onclick="verQtdBase()" style="margin-top:0;">
+          📊 Ver quantidade salva
+        </button>
+      </div>
+      <div class="status-box" id="statusDB"></div>
+      <div class="progress-wrap" id="progressWrapDB">
+        <div class="progress-bg"><div class="progress-fill" id="progressBarDB"></div></div>
+        <div class="progress-text" id="progressTextDB">Aguardando...</div>
+      </div>
+    </div>
+
+    <!-- Stats Base V8 -->
+    <div class="stats">
+      <div class="stat-box">
+        <div class="stat-num" id="dbTotal">—</div>
+        <div class="stat-lbl">Leads na Base V8</div>
+      </div>
+      <div class="stat-box green">
+        <div class="stat-num" id="dbMaiorMargem">—</div>
+        <div class="stat-lbl">Maior Margem</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num" id="dbPagina">—</div>
+        <div class="stat-lbl">Página Atual</div>
+      </div>
+    </div>
+
+    <!-- Busca na Base V8 -->
+    <div class="card">
+      <div class="card-label">Buscar na Base</div>
+      <div class="dl-row" style="margin-bottom:0;gap:8px;">
+        <input type="text" class="search-input" id="searchDB" placeholder="Buscar por CPF ou Nome..." oninput="buscarBaseV8()">
+        <button class="dl-btn purple" onclick="exportarBaseV8CSV()" id="btnExportDB" disabled>⬇ Exportar CSV</button>
+      </div>
+    </div>
+
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div class="table-wrap" style="border-radius:12px;">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th><th>CPF</th><th>Nome</th><th>Margem Disponível</th><th>Descrição</th><th>ID V8</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyDB">
+            <tr><td colspan="6">
+              <div class="empty"><div class="icon">🗄️</div><p>Clique em "Ver quantidade salva" ou extraia a base para começar</p></div>
+            </td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="pagination" id="paginationDB" style="padding:14px;display:none;">
+        <button class="page-btn" id="btnDBPrev" onclick="mudaPaginaDB(-1)" disabled>← Anterior</button>
+        <span class="page-info" id="pageInfoDB">Página 1</span>
+        <button class="page-btn" id="btnDBNext" onclick="mudaPaginaDB(1)">Próxima →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ ABA MEUS LEADS ═══════════════════ -->
+  <div class="tab-panel" id="panel-meusleads">
+
+    <div class="info-banner">
+      📋 Aqui ficam os leads que você <strong>extraiu do Hub</strong> e os que <strong>higienizou na V8</strong>. A coluna "Na Base V8" indica se o lead também aparece na base completa (cruzamento automático).
+    </div>
+
+    <!-- Stats Meus Leads -->
+    <div class="stats-4">
+      <div class="stat-box">
+        <div class="stat-num" id="mlTotal">—</div>
+        <div class="stat-lbl">Total Meus Leads</div>
+      </div>
+      <div class="stat-box blue" style="--blue-num:#93c5fd;">
+        <div class="stat-num" id="mlHub" style="color:#93c5fd;">—</div>
+        <div class="stat-lbl">Do Hub Crédito</div>
+      </div>
+      <div class="stat-box green">
+        <div class="stat-num" id="mlV8">—</div>
+        <div class="stat-lbl">Higienizados V8</div>
+      </div>
+      <div class="stat-box yellow">
+        <div class="stat-num" id="mlNaBase">—</div>
+        <div class="stat-lbl">Cruzados com Base V8</div>
+      </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card">
+      <div class="card-label">Filtrar e Buscar</div>
+      <div class="dl-row" style="margin-bottom:0;gap:8px;">
+        <input type="text" class="search-input" id="searchML" placeholder="Buscar por CPF ou Nome..." oninput="buscarMeusLeads()">
+        <select class="filter-sel" id="filterOrigem" onchange="buscarMeusLeads()">
+          <option value="">Todas as origens</option>
+          <option value="hub_credito">Hub Crédito</option>
+          <option value="v8_higienizacao">V8 Higienização</option>
+        </select>
+        <button class="dl-btn purple" onclick="exportarMeusLeadsCSV()" id="btnExportML" disabled>⬇ Exportar CSV</button>
+      </div>
+    </div>
+
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div class="table-wrap" style="border-radius:12px;">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th><th>CPF</th><th>Nome</th><th>Margem</th><th>Status</th><th>Origem</th><th>Na Base V8</th><th>Margem V8</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyML">
+            <tr><td colspan="8">
+              <div class="empty"><div class="icon">📋</div><p>Salve leads via Hub Crédito ou Higienização V8 para vê-los aqui</p></div>
+            </td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="pagination" id="paginationML" style="padding:14px;display:none;">
+        <button class="page-btn" id="btnMLPrev" onclick="mudaPaginaML(-1)" disabled>← Anterior</button>
+        <span class="page-info" id="pageInfoML">Página 1</span>
+        <button class="page-btn" id="btnMLNext" onclick="mudaPaginaML(1)">Próxima →</button>
+      </div>
+    </div>
+  </div>
+
 </div><!-- /container -->
 
 <script>
 // ──────────────────────────────────────────────────────────────
 // CONFIGURAÇÃO
 // ──────────────────────────────────────────────────────────────
-const WEBHOOK_HUB = 'https://rarelookingorca-n8n.cloudfy.live/webhook/hub-credito-leads';
-const WEBHOOK_V8  = 'https://rarelookingorca-n8n.cloudfy.live/webhook/v8-higienizacao-clt';
+const WEBHOOK_HUB    = 'https://rarelookingorca-n8n.cloudfy.live/webhook/hub-credito-leads';
+const WEBHOOK_V8     = 'https://rarelookingorca-n8n.cloudfy.live/webhook/v8-higienizacao-clt';
+const WH_SALVAR_BASE = 'https://rarelookingorca-n8n.cloudfy.live/webhook/leads-base-v8-salvar';
+const WH_BUSCAR_BASE = 'https://rarelookingorca-n8n.cloudfy.live/webhook/leads-base-v8-buscar';
+const WH_SALVAR_ML   = 'https://rarelookingorca-n8n.cloudfy.live/webhook/meus-leads-salvar';
+const WH_BUSCAR_ML   = 'https://rarelookingorca-n8n.cloudfy.live/webhook/meus-leads-buscar';
+
+// V8 API (para extração direta)
+const V8_AUTH_URL = 'https://auth.v8sistema.com/oauth/token';
+const V8_API_BASE = 'https://v2-bff-prod-front.yellowisland-b252a8a0.eastus.azurecontainerapps.io';
+const V8_CLIENT_ID = 'DHWogdaYmEI8n5bwwxPDzulMlSK7dwIn';
+
+const TABS = ['hub','v8','db','meusleads'];
+const PAGE_SIZE = 50;
 
 // ──────────────────────────────────────────────────────────────
 // TABS
 // ──────────────────────────────────────────────────────────────
 function switchTab(name) {
-  ['hub','v8'].forEach(t => {
+  TABS.forEach(t => {
     document.getElementById('tab-'+t).classList.toggle('active', t===name);
     document.getElementById('panel-'+t).classList.toggle('active', t===name);
   });
+  if (name === 'db' && dbLeads.length === 0) buscarBaseV8();
+  if (name === 'meusleads') buscarMeusLeads();
+}
+
+// ──────────────────────────────────────────────────────────────
+// UTILS
+// ──────────────────────────────────────────────────────────────
+function ts() { return new Date().toISOString().slice(0,10); }
+function fmtBRL(val) {
+  return (val || 0).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
+}
+function dlFile(content, name, mime) {
+  const blob = new Blob([content], { type: mime });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+function setStatus(id, msg, tipo) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.className = 'status-box ' + tipo;
+  el.style.display = 'block';
+}
+function setProgress(barId, textId, wrapId, pct, texto) {
+  document.getElementById(wrapId).style.display = 'block';
+  document.getElementById(barId).style.width = pct + '%';
+  document.getElementById(textId).textContent = texto;
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -510,7 +784,6 @@ function setQty(n, btn) {
   if (n === 0) { inp.value = ''; lbl.textContent = 'Todos os leads disponíveis'; }
   else         { inp.value = n;  lbl.textContent = `Extrair até ${n.toLocaleString('pt-BR')} leads`; }
 }
-
 function onQtyInput(val) {
   document.querySelectorAll('.qty-btn').forEach(b => b.classList.remove('active'));
   const n = parseInt(val) || 0;
@@ -519,30 +792,11 @@ function onQtyInput(val) {
     n ? `Extrair até ${n.toLocaleString('pt-BR')} leads` : 'Todos os leads disponíveis';
 }
 
-function setStatus(id, msg, tipo) {
-  const el = document.getElementById(id);
-  el.textContent = msg;
-  el.className = 'status-box ' + tipo;
-  el.style.display = 'block';
-}
-
-function setProgress(barId, textId, wrapId, pct, texto) {
-  document.getElementById(wrapId).style.display = 'block';
-  document.getElementById(barId).style.width = pct + '%';
-  document.getElementById(textId).textContent = texto;
-}
-
-function fmtBRL(val) {
-  return (val || 0).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
-}
-
 async function iniciarExtracao() {
   const btn = document.getElementById('btnExtrair');
   btn.disabled = true;
   btn.textContent = '⏳ Extraindo...';
-  document.getElementById('btnCSV').disabled = true;
-  document.getElementById('btnJSON').disabled = true;
-  document.getElementById('btnCopiarCPFs').disabled = true;
+  ['btnCSV','btnJSON','btnCopiarCPFs','btnSalvarHub'].forEach(id => document.getElementById(id).disabled = true);
   leadsData = [];
   document.getElementById('tbodyLeads').innerHTML = '';
   ['statTotal','statValor','statTempo'].forEach(id => document.getElementById(id).textContent = '—');
@@ -578,9 +832,7 @@ async function iniciarExtracao() {
     renderTabelaHub(leadsData.slice(0, 1000));
     setProgress('progressBarHub','progressTextHub','progressWrapHub', 100, `✅ ${leadsData.length.toLocaleString('pt-BR')} leads`);
     setStatus('statusHub', `✅ Extração concluída! ${leadsData.length.toLocaleString('pt-BR')} leads em ${tempo}s${leadsData.length > 1000 ? ' · Exibindo primeiros 1.000' : ''}`, 'success');
-    document.getElementById('btnCSV').disabled  = false;
-    document.getElementById('btnJSON').disabled = false;
-    document.getElementById('btnCopiarCPFs').disabled = false;
+    ['btnCSV','btnJSON','btnCopiarCPFs','btnSalvarHub'].forEach(id => document.getElementById(id).disabled = false);
     document.getElementById('tab-hub').classList.add('has-data');
 
   } catch(err) {
@@ -623,6 +875,37 @@ function copiarCPFs() {
   });
 }
 
+async function salvarHubNoDB() {
+  if (!leadsData.length) return;
+  const btn = document.getElementById('btnSalvarHub');
+  btn.disabled = true;
+  btn.textContent = '💾 Salvando...';
+  try {
+    const payload = leadsData.map(l => ({
+      cpf: (l.cpf||'').replace(/\D/g,''),
+      nome: l.nome||'',
+      margem: l.valorLiberado||0,
+      status: 'HUB',
+      descricao: `Matrícula: ${l.matricula||''}`,
+      origem: 'hub_credito'
+    })).filter(l => l.cpf);
+
+    const resp = await fetch(WH_SALVAR_ML, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    setStatus('statusHub', `✅ ${payload.length} leads salvos em Meus Leads!`, 'success');
+    document.getElementById('tab-meusleads').classList.add('has-data');
+  } catch(err) {
+    setStatus('statusHub', '❌ Erro ao salvar: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '💾 Salvar em Meus Leads';
+  }
+}
+
 function baixarCSV() {
   if (!leadsData.length) return;
   const header = 'CPF,Nome,Matrícula,Dt. Nascimento,Dt. Admissão,Valor Liberado,Hub ID,Expiração';
@@ -634,7 +917,6 @@ function baixarCSV() {
   ].join(','));
   dlFile('﻿' + [header,...rows].join('\n'), `hub_leads_${ts()}.csv`, 'text/csv;charset=utf-8');
 }
-
 function baixarJSON() {
   if (!leadsData.length) return;
   dlFile(JSON.stringify({ exportedAt: new Date().toISOString(), total: leadsData.length, leads: leadsData }, null, 2),
@@ -642,7 +924,7 @@ function baixarJSON() {
 }
 
 // ──────────────────────────────────────────────────────────────
-// ABA V8 — helpers
+// ABA V8 HIGIENIZAÇÃO
 // ──────────────────────────────────────────────────────────────
 let v8Leads = [];
 
@@ -656,7 +938,6 @@ function parseCPFs(txt) {
        .filter(s => s.length >= 10)
   )];
 }
-
 function atualizarContagem() {
   const cpfs = parseCPFs(cpfArea.value);
   const el = document.getElementById('cpfCount');
@@ -666,7 +947,6 @@ function atualizarContagem() {
   el.style.color = cpfs.length ? 'var(--green-fg)' : 'var(--fg3)';
   document.getElementById('btnExcluirCPFs').style.display = cpfs.length ? 'block' : 'none';
 }
-
 function excluirCPFs() {
   cpfArea.value = '';
   atualizarContagem();
@@ -683,8 +963,7 @@ async function iniciarHigienizacao() {
   const btn = document.getElementById('btnHigienizar');
   btn.disabled = true;
   btn.textContent = '⏳ Higienizando...';
-  document.getElementById('btnV8CSV').disabled  = true;
-  document.getElementById('btnV8JSON').disabled = true;
+  ['btnV8CSV','btnV8JSON','btnSalvarV8Hig'].forEach(id => document.getElementById(id).disabled = true);
   v8Leads = [];
   document.getElementById('tbodyV8').innerHTML = '';
   ['v8Total','v8ComMargem','v8SemMargem','v8Taxa'].forEach(id => document.getElementById(id).textContent = '—');
@@ -693,10 +972,7 @@ async function iniciarHigienizacao() {
   const totalCPFs = cpfs.length;
   const totalLotes = Math.ceil(totalCPFs / LOTE);
   const inicio = Date.now();
-  let totalComMargem = 0;
-  let totalSemMargem = 0;
-  let totalProcessados = 0;
-  let todosLeads = [];
+  let totalComMargem = 0, totalSemMargem = 0, totalProcessados = 0, todosLeads = [];
 
   setStatus('statusV8', `🔐 Iniciando higienização de ${totalCPFs} CPFs em ${totalLotes} lote${totalLotes>1?'s':''}...`, 'info');
   setProgress('progressBarV8','progressTextV8','progressWrapV8', 2, 'Autenticando na V8...');
@@ -707,8 +983,6 @@ async function iniciarHigienizacao() {
       const pct = Math.round(((i) / totalLotes) * 90) + 5;
       setProgress('progressBarV8','progressTextV8','progressWrapV8', pct,
         `Lote ${i+1}/${totalLotes} · ${totalProcessados}/${totalCPFs} CPFs processados...`);
-      setStatus('statusV8',
-        `⏳ Processando lote ${i+1} de ${totalLotes} (${lote.length} CPFs)...`, 'info');
 
       const resp = await fetch(WEBHOOK_V8, {
         method: 'POST',
@@ -724,8 +998,7 @@ async function iniciarHigienizacao() {
       totalSemMargem += data.semMargem || 0;
       totalProcessados += lote.length;
 
-      const taxaParcial = totalProcessados > 0
-        ? ((totalComMargem / totalProcessados) * 100).toFixed(0) + '%' : '0%';
+      const taxaParcial = totalProcessados > 0 ? ((totalComMargem / totalProcessados) * 100).toFixed(0) + '%' : '0%';
       document.getElementById('v8Total').textContent     = totalProcessados.toLocaleString('pt-BR');
       document.getElementById('v8ComMargem').textContent = totalComMargem.toLocaleString('pt-BR');
       document.getElementById('v8SemMargem').textContent = totalSemMargem.toLocaleString('pt-BR');
@@ -736,7 +1009,6 @@ async function iniciarHigienizacao() {
 
     const tempo = ((Date.now() - inicio) / 1000).toFixed(1);
     const taxa = totalCPFs > 0 ? ((totalComMargem / totalCPFs) * 100).toFixed(0) + '%' : '0%';
-
     document.getElementById('v8Total').textContent     = totalCPFs.toLocaleString('pt-BR');
     document.getElementById('v8ComMargem').textContent = totalComMargem.toLocaleString('pt-BR');
     document.getElementById('v8SemMargem').textContent = totalSemMargem.toLocaleString('pt-BR');
@@ -748,11 +1020,9 @@ async function iniciarHigienizacao() {
       'success');
 
     if (todosLeads.length) {
-      document.getElementById('btnV8CSV').disabled  = false;
-      document.getElementById('btnV8JSON').disabled = false;
+      ['btnV8CSV','btnV8JSON','btnSalvarV8Hig'].forEach(id => document.getElementById(id).disabled = false);
       document.getElementById('tab-v8').classList.add('has-data');
     }
-
   } catch(err) {
     setStatus('statusV8', '❌ Erro: ' + err.message, 'error');
     setProgress('progressBarV8','progressTextV8','progressWrapV8', 0, 'Falha');
@@ -781,6 +1051,37 @@ function renderTabelaV8(leads) {
     </tr>`).join('');
 }
 
+async function salvarV8HigNoDB() {
+  if (!v8Leads.length) return;
+  const btn = document.getElementById('btnSalvarV8Hig');
+  btn.disabled = true;
+  btn.textContent = '💾 Salvando...';
+  try {
+    const payload = v8Leads.map(l => ({
+      cpf: ((l.documentNumber||l.cpf||'').replace(/\D/g,'')),
+      nome: l.name||l.nome||'',
+      margem: l.availableMarginValue||0,
+      status: l.status||'SUCCESS',
+      descricao: l.description||'',
+      origem: 'v8_higienizacao'
+    })).filter(l => l.cpf);
+
+    const resp = await fetch(WH_SALVAR_ML, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    setStatus('statusV8', `✅ ${payload.length} leads salvos em Meus Leads!`, 'success');
+    document.getElementById('tab-meusleads').classList.add('has-data');
+  } catch(err) {
+    setStatus('statusV8', '❌ Erro ao salvar: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '💾 Salvar em Meus Leads';
+  }
+}
+
 function baixarV8CSV() {
   if (!v8Leads.length) return;
   const header = 'CPF,Nome,Status,Margem Disponível,Descrição';
@@ -791,26 +1092,333 @@ function baixarV8CSV() {
     l.availableMarginValue||0,
     `"${((l.description||'').replace(/"/g,'""'))}"`
   ].join(','));
-  dlFile('﻿' + [header,...rows].join('\n'), `v8_leads_clt_${ts()}.csv`, 'text/csv;charset=utf-8');
+  dlFile('﻿' + [header,...rows].join('\n'), `v8_higienizados_${ts()}.csv`, 'text/csv;charset=utf-8');
 }
-
 function baixarV8JSON() {
   if (!v8Leads.length) return;
   dlFile(JSON.stringify({ exportedAt: new Date().toISOString(), total: v8Leads.length, leads: v8Leads }, null, 2),
-    `v8_leads_clt_${ts()}.json`, 'application/json');
+    `v8_higienizados_${ts()}.json`, 'application/json');
 }
 
 // ──────────────────────────────────────────────────────────────
-// UTILS
+// ABA BASE DE DADOS V8 — Extração + Busca
 // ──────────────────────────────────────────────────────────────
-function ts() { return new Date().toISOString().slice(0,10); }
-function dlFile(content, name, mime) {
-  const blob = new Blob([content], { type: mime });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href = url; a.download = name;
-  document.body.appendChild(a); a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+let dbLeads = [], dbPagina = 1, dbTotal = 0, dbBusca = '';
+let v8Token = null, v8TokenExp = 0;
+
+async function getV8Token() {
+  if (v8Token && Date.now() < v8TokenExp) return v8Token;
+  const r = await fetch(V8_AUTH_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'password',
+      client_id: V8_CLIENT_ID,
+      username: '', password: '',
+      audience: 'https://v2-bff-prod-api.yellowisland-b252a8a0.eastus.azurecontainerapps.io',
+      scope: 'openid profile email offline_access'
+    })
+  });
+  if (!r.ok) throw new Error('Falha ao autenticar na V8 — verifique as credenciais');
+  const d = await r.json();
+  v8Token = d.access_token;
+  v8TokenExp = Date.now() + (d.expires_in - 60) * 1000;
+  return v8Token;
+}
+
+async function extrairBaseV8() {
+  const btn = document.getElementById('btnExtrairBaseV8');
+  btn.disabled = true;
+  btn.textContent = '⏳ Extraindo...';
+
+  setStatus('statusDB', '🔐 Autenticando na V8...', 'info');
+  setProgress('progressBarDB','progressTextDB','progressWrapDB', 2, 'Autenticando...');
+
+  const START = '2025-07-01T03:00:00.000Z';
+  const END   = '2026-11-01T02:59:59.999Z';
+  const LIMIT = 100;
+  let page = 1, totalSalvos = 0, totalPages = null;
+
+  try {
+    const token = await getV8Token();
+
+    // descobrir total de páginas
+    const r0 = await fetch(
+      `${V8_API_BASE}/private-consignment/consult?startDate=${START}&endDate=${END}&page=1&limit=${LIMIT}&status=SUCCESS`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (!r0.ok) throw new Error('Erro ao consultar V8: HTTP ' + r0.status);
+    const d0 = await r0.json();
+    const totalLeads = d0.total || 14386;
+    totalPages = Math.ceil(totalLeads / LIMIT);
+
+    setStatus('statusDB', `📡 Extraindo ${totalLeads.toLocaleString('pt-BR')} leads em ${totalPages} páginas...`, 'info');
+
+    // salvar primeira página
+    const primeiraLote = (d0.items || d0.data || []).map(mapV8Lead);
+    if (primeiraLote.length) {
+      await salvarLoteBaseV8(primeiraLote, token);
+      totalSalvos += primeiraLote.length;
+    }
+
+    // demais páginas
+    for (page = 2; page <= totalPages; page++) {
+      const pct = Math.round((page / totalPages) * 95) + 3;
+      setProgress('progressBarDB','progressTextDB','progressWrapDB', pct,
+        `Página ${page}/${totalPages} · ${totalSalvos.toLocaleString('pt-BR')} salvos...`);
+      setStatus('statusDB', `⏳ Página ${page} de ${totalPages}...`, 'info');
+
+      const rp = await fetch(
+        `${V8_API_BASE}/private-consignment/consult?startDate=${START}&endDate=${END}&page=${page}&limit=${LIMIT}&status=SUCCESS`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!rp.ok) throw new Error(`Erro na página ${page}: HTTP ${rp.status}`);
+      const dp = await rp.json();
+      const lote = (dp.items || dp.data || []).map(mapV8Lead);
+      if (lote.length) {
+        await salvarLoteBaseV8(lote, token);
+        totalSalvos += lote.length;
+      }
+    }
+
+    setProgress('progressBarDB','progressTextDB','progressWrapDB', 100, `✅ ${totalSalvos.toLocaleString('pt-BR')} leads salvos`);
+    setStatus('statusDB', `✅ Base V8 extraída! ${totalSalvos.toLocaleString('pt-BR')} leads salvos no banco de dados.`, 'success');
+    document.getElementById('tab-db').classList.add('has-data');
+    await buscarBaseV8();
+
+  } catch(err) {
+    // Se falhou no auth (sem credenciais), mostrar instrução
+    if (err.message.includes('autenticar')) {
+      setStatus('statusDB', '⚠️ Para extrair a base V8, é necessário que o n8n faça a autenticação. ' +
+        'Use o workflow "V8 - Higienização Margem CLT" e adicione um nó de extração da base, ' +
+        'ou informe suas credenciais V8 no painel.', 'warning');
+    } else {
+      setStatus('statusDB', '❌ Erro: ' + err.message, 'error');
+    }
+    setProgress('progressBarDB','progressTextDB','progressWrapDB', 0, 'Falha');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🗄️ Extrair e Salvar Base V8';
+  }
+}
+
+function mapV8Lead(item) {
+  return {
+    cpf:        (item.documentNumber || '').replace(/\D/g,''),
+    nome:       item.name || '',
+    margem:     item.availableMarginValue || 0,
+    status:     item.status || 'SUCCESS',
+    descricao:  item.description || '',
+    id_v8:      item.id || '',
+    partner_id: item.partnerId || ''
+  };
+}
+
+async function salvarLoteBaseV8(lote) {
+  // Envia em sub-lotes de 200 para não sobrecarregar
+  const SUB = 200;
+  for (let i = 0; i < lote.length; i += SUB) {
+    const sub = lote.slice(i, i + SUB);
+    const r = await fetch(WH_SALVAR_BASE, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(sub)
+    });
+    if (!r.ok) throw new Error('Erro ao salvar no banco: HTTP ' + r.status);
+  }
+}
+
+async function verQtdBase() {
+  await buscarBaseV8();
+}
+
+let dbSearchTimer = null;
+function buscarBaseV8() {
+  clearTimeout(dbSearchTimer);
+  dbSearchTimer = setTimeout(_buscarBaseV8, 400);
+}
+async function _buscarBaseV8() {
+  const busca = (document.getElementById('searchDB')||{}).value || '';
+  if (busca !== dbBusca) { dbPagina = 1; dbBusca = busca; }
+
+  try {
+    const offset = (dbPagina - 1) * PAGE_SIZE;
+    const params = new URLSearchParams({ limit: PAGE_SIZE, offset });
+    if (busca) params.set('search', busca);
+
+    const resp = await fetch(`${WH_BUSCAR_BASE}?${params}`);
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+
+    dbLeads = data.leads || [];
+    dbTotal = data.total || 0;
+
+    renderTabelaDB(dbLeads);
+    atualizarPaginacaoDB();
+
+    document.getElementById('dbTotal').textContent = dbTotal.toLocaleString('pt-BR');
+    if (dbLeads.length) {
+      const maiorMargem = Math.max(...dbLeads.map(l => l.margem || 0));
+      document.getElementById('dbMaiorMargem').textContent = fmtBRL(maiorMargem);
+      document.getElementById('btnExportDB').disabled = false;
+    }
+    document.getElementById('dbPagina').textContent = `${dbPagina}/${Math.max(1,Math.ceil(dbTotal/PAGE_SIZE))}`;
+
+  } catch(err) {
+    console.error('Erro ao buscar base V8:', err);
+  }
+}
+
+function renderTabelaDB(leads) {
+  if (!leads.length) {
+    document.getElementById('tbodyDB').innerHTML = `
+      <tr><td colspan="6">
+        <div class="empty"><div class="icon">🗄️</div>
+        <p>${dbTotal === 0 ? 'Base ainda vazia — extraia os leads V8 primeiro' : 'Nenhum resultado para esta busca'}</p>
+        </div>
+      </td></tr>`;
+    return;
+  }
+  const offset = (dbPagina - 1) * PAGE_SIZE;
+  document.getElementById('tbodyDB').innerHTML = leads.map((l,i) => `
+    <tr>
+      <td>${offset + i + 1}</td>
+      <td class="cpf">${l.cpf||'—'}</td>
+      <td>${l.nome||'—'}</td>
+      <td class="valor">${fmtBRL(l.margem)}</td>
+      <td style="color:var(--fg2);font-size:11px">${l.descricao||'—'}</td>
+      <td style="color:var(--fg3);font-size:10px;font-family:var(--mono)">${l.id_v8||'—'}</td>
+    </tr>`).join('');
+}
+
+function atualizarPaginacaoDB() {
+  const totalPag = Math.ceil(dbTotal / PAGE_SIZE) || 1;
+  const pag = document.getElementById('paginationDB');
+  pag.style.display = dbTotal > PAGE_SIZE ? 'flex' : 'none';
+  document.getElementById('pageInfoDB').textContent = `Página ${dbPagina} de ${totalPag} · ${dbTotal.toLocaleString('pt-BR')} leads`;
+  document.getElementById('btnDBPrev').disabled = dbPagina <= 1;
+  document.getElementById('btnDBNext').disabled = dbPagina >= totalPag;
+}
+
+function mudaPaginaDB(delta) {
+  dbPagina = Math.max(1, dbPagina + delta);
+  _buscarBaseV8();
+}
+
+function exportarBaseV8CSV() {
+  if (!dbLeads.length) return;
+  const header = 'CPF,Nome,Margem Disponível,Descrição,ID V8,Partner ID';
+  const rows = dbLeads.map(l => [
+    l.cpf||'',
+    `"${(l.nome||'').replace(/"/g,'""')}"`,
+    l.margem||0,
+    `"${(l.descricao||'').replace(/"/g,'""')}"`,
+    l.id_v8||'',
+    l.partner_id||''
+  ].join(','));
+  dlFile('﻿' + [header,...rows].join('\n'), `base_v8_${ts()}.csv`, 'text/csv;charset=utf-8');
+}
+
+// ──────────────────────────────────────────────────────────────
+// ABA MEUS LEADS
+// ──────────────────────────────────────────────────────────────
+let mlLeads = [], mlPagina = 1, mlTotal = 0, mlBusca = '', mlOrigem = '';
+
+let mlSearchTimer = null;
+function buscarMeusLeads() {
+  clearTimeout(mlSearchTimer);
+  mlSearchTimer = setTimeout(_buscarMeusLeads, 400);
+}
+async function _buscarMeusLeads() {
+  const busca  = (document.getElementById('searchML')||{}).value || '';
+  const origem = (document.getElementById('filterOrigem')||{}).value || '';
+  if (busca !== mlBusca || origem !== mlOrigem) { mlPagina = 1; mlBusca = busca; mlOrigem = origem; }
+
+  try {
+    const offset = (mlPagina - 1) * PAGE_SIZE;
+    const params = new URLSearchParams({ limit: PAGE_SIZE, offset });
+    if (busca)  params.set('search', busca);
+    if (origem) params.set('origem', origem);
+
+    const resp = await fetch(`${WH_BUSCAR_ML}?${params}`);
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+
+    mlLeads = data.leads || [];
+    mlTotal = data.total || 0;
+
+    renderTabelaML(mlLeads);
+    atualizarPaginacaoML();
+
+    // stats
+    const hub    = mlLeads.filter(l => l.origem === 'hub_credito').length;
+    const v8hig  = mlLeads.filter(l => l.origem === 'v8_higienizacao').length;
+    const naBase = mlLeads.filter(l => l.na_base_v8).length;
+    document.getElementById('mlTotal').textContent  = mlTotal.toLocaleString('pt-BR');
+    document.getElementById('mlHub').textContent    = hub.toLocaleString('pt-BR');
+    document.getElementById('mlV8').textContent     = v8hig.toLocaleString('pt-BR');
+    document.getElementById('mlNaBase').textContent = naBase.toLocaleString('pt-BR');
+
+    if (mlLeads.length) document.getElementById('btnExportML').disabled = false;
+
+  } catch(err) {
+    console.error('Erro ao buscar meus leads:', err);
+  }
+}
+
+function renderTabelaML(leads) {
+  if (!leads.length) {
+    document.getElementById('tbodyML').innerHTML = `
+      <tr><td colspan="8">
+        <div class="empty"><div class="icon">📋</div>
+        <p>${mlTotal === 0 ? 'Nenhum lead salvo ainda — extraia do Hub ou higienize na V8 e clique em "Salvar em Meus Leads"' : 'Nenhum resultado para esta busca'}</p>
+        </div>
+      </td></tr>`;
+    return;
+  }
+  const offset = (mlPagina - 1) * PAGE_SIZE;
+  const origemLabel = { hub_credito: '🏦 Hub', v8_higienizacao: '🔍 V8 Hig.' };
+  document.getElementById('tbodyML').innerHTML = leads.map((l,i) => `
+    <tr>
+      <td>${offset + i + 1}</td>
+      <td class="cpf">${l.cpf||'—'}</td>
+      <td>${l.nome||'—'}</td>
+      <td class="valor">${fmtBRL(l.margem)}</td>
+      <td>${l.status||'—'}</td>
+      <td style="font-size:11px;color:var(--fg2)">${origemLabel[l.origem]||l.origem||'—'}</td>
+      <td class="${l.na_base_v8 ? 'badge-ok' : 'badge-no'}" style="text-align:center">
+        ${l.na_base_v8 ? '✅ Sim' : '—'}
+      </td>
+      <td class="valor" style="font-size:11px">${l.margem_v8 ? fmtBRL(l.margem_v8) : '—'}</td>
+    </tr>`).join('');
+}
+
+function atualizarPaginacaoML() {
+  const totalPag = Math.ceil(mlTotal / PAGE_SIZE) || 1;
+  const pag = document.getElementById('paginationML');
+  pag.style.display = mlTotal > PAGE_SIZE ? 'flex' : 'none';
+  document.getElementById('pageInfoML').textContent = `Página ${mlPagina} de ${totalPag} · ${mlTotal.toLocaleString('pt-BR')} leads`;
+  document.getElementById('btnMLPrev').disabled = mlPagina <= 1;
+  document.getElementById('btnMLNext').disabled = mlPagina >= totalPag;
+}
+
+function mudaPaginaML(delta) {
+  mlPagina = Math.max(1, mlPagina + delta);
+  _buscarMeusLeads();
+}
+
+function exportarMeusLeadsCSV() {
+  if (!mlLeads.length) return;
+  const header = 'CPF,Nome,Margem,Status,Origem,Na Base V8,Margem V8';
+  const rows = mlLeads.map(l => [
+    l.cpf||'',
+    `"${(l.nome||'').replace(/"/g,'""')}"`,
+    l.margem||0,
+    l.status||'',
+    l.origem||'',
+    l.na_base_v8 ? 'Sim' : 'Não',
+    l.margem_v8||''
+  ].join(','));
+  dlFile('﻿' + [header,...rows].join('\n'), `meus_leads_${ts()}.csv`, 'text/csv;charset=utf-8');
 }
 </script>
