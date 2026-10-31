@@ -374,6 +374,7 @@
       <div class="dl-row">
         <button class="dl-btn csv"  id="btnCSV"  onclick="baixarCSV()"  disabled>⬇ Baixar CSV</button>
         <button class="dl-btn json" id="btnJSON" onclick="baixarJSON()" disabled>⬇ Baixar JSON</button>
+        <button class="dl-btn" id="btnCopiarCPFs" onclick="copiarCPFs()" disabled style="background:#312e81;color:#c7d2fe;border:1px solid #6366f1;">📋 Copiar CPFs</button>
       </div>
       <div class="table-wrap">
         <table>
@@ -522,6 +523,7 @@ async function iniciarExtracao() {
   btn.textContent = '⏳ Extraindo...';
   document.getElementById('btnCSV').disabled = true;
   document.getElementById('btnJSON').disabled = true;
+  document.getElementById('btnCopiarCPFs').disabled = true;
   leadsData = [];
   document.getElementById('tbodyLeads').innerHTML = '';
   ['statTotal','statValor','statTempo'].forEach(id => document.getElementById(id).textContent = '—');
@@ -559,6 +561,7 @@ async function iniciarExtracao() {
     setStatus('statusHub', `✅ Extração concluída! ${leadsData.length.toLocaleString('pt-BR')} leads em ${tempo}s${leadsData.length > 1000 ? ' · Exibindo primeiros 1.000' : ''}`, 'success');
     document.getElementById('btnCSV').disabled  = false;
     document.getElementById('btnJSON').disabled = false;
+    document.getElementById('btnCopiarCPFs').disabled = false;
     document.getElementById('tab-hub').classList.add('has-data');
 
   } catch(err) {
@@ -582,6 +585,24 @@ function renderTabelaHub(leads) {
       <td class="valor">${fmtBRL(l.valorLiberado)}</td>
       <td>${l.hubExpiracao||'—'}</td>
     </tr>`).join('');
+}
+
+function copiarCPFs() {
+  if (!leadsData.length) return;
+  const texto = leadsData.map(l => l.cpf || '').filter(Boolean).join('\n');
+  const btn = document.getElementById('btnCopiarCPFs');
+  navigator.clipboard.writeText(texto).then(() => {
+    btn.textContent = '✅ Copiados!';
+    setTimeout(() => { btn.textContent = '📋 Copiar CPFs'; }, 2000);
+  }).catch(() => {
+    // fallback
+    const ta = document.createElement('textarea');
+    ta.value = texto;
+    ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); btn.textContent = '✅ Copiados!'; setTimeout(() => { btn.textContent = '📋 Copiar CPFs'; }, 2000); } catch(e) {}
+    document.body.removeChild(ta);
+  });
 }
 
 function baixarCSV() {
