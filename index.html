@@ -607,11 +607,41 @@
       </div>
     </div>
 
+    <!-- Separar CPFs para higienização -->
+    <div class="card">
+      <div class="card-label">Separar CPFs para Higienizar</div>
+      <p style="font-size:13px;color:var(--fg2);margin-bottom:14px;">
+        Pega CPFs da base que <strong>ainda não foram separados</strong> (maior margem primeiro) e marca como extraídos — eles não voltam a sair em outra separação.
+      </p>
+      <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:14px;">
+        <div style="flex:1;min-width:180px;">
+          <label style="font-size:11px;color:var(--fg3);display:block;margin-bottom:5px;">Quantidade de CPFs</label>
+          <input type="number" id="qtdSeparar" class="search-input" style="width:100%" min="1" step="1" value="100">
+        </div>
+        <button class="btn-main" id="btnSepararCPFs" onclick="separarCPFs()" style="margin-top:0;white-space:nowrap;">
+          📤 Separar CPFs
+        </button>
+      </div>
+      <div class="status-box" id="statusSeparar"></div>
+      <div id="separarResultado" style="display:none;">
+        <textarea class="cpf-area" id="cpfsSeparados" readonly style="min-height:120px;"></textarea>
+        <div class="dl-row" style="margin-top:10px;margin-bottom:0;gap:8px;flex-wrap:wrap;">
+          <button class="dl-btn purple" id="btnCopiarSeparados" onclick="copiarSeparados()">📋 Copiar CPFs</button>
+          <button class="dl-btn purple" onclick="enviarSeparadosHigienizacao()">🔍 Enviar para Higienização</button>
+          <button class="dl-btn purple" onclick="baixarSeparadosCSV()">⬇ Baixar CSV</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Stats Base V8 -->
-    <div class="stats">
+    <div class="stats-4">
       <div class="stat-box">
         <div class="stat-num" id="dbTotal">—</div>
         <div class="stat-lbl">Leads na Base V8</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num" id="dbDisponiveis">—</div>
+        <div class="stat-lbl">Ainda não separados</div>
       </div>
       <div class="stat-box green">
         <div class="stat-num" id="dbMaiorMargem">—</div>
@@ -637,11 +667,11 @@
         <table>
           <thead>
             <tr>
-              <th>#</th><th>CPF</th><th>Nome</th><th>Margem Disponível</th><th>Descrição</th><th>ID V8</th>
+              <th>#</th><th>CPF</th><th>Nome</th><th>Margem Disponível</th><th>Separado em</th><th>Descrição</th><th>ID V8</th>
             </tr>
           </thead>
           <tbody id="tbodyDB">
-            <tr><td colspan="6">
+            <tr><td colspan="7">
               <div class="empty"><div class="icon">🗄️</div><p>Clique em "Ver quantidade salva" ou extraia a base para começar</p></div>
             </td></tr>
           </tbody>
@@ -731,6 +761,7 @@ const WH_SALVAR_BASE  = 'https://rarelookingorca-n8n.cloudfy.live/webhook/leads-
 const WH_BUSCAR_BASE  = 'https://rarelookingorca-n8n.cloudfy.live/webhook/leads-base-v8-buscar';
 const WH_EXTRAIR_BASE = 'https://rarelookingorca-n8n.cloudfy.live/webhook/extrair-base-v8';
 const WH_CONTAR_BASE  = 'https://rarelookingorca-n8n.cloudfy.live/webhook/contar-base-v8';
+const WH_SEPARAR_BASE = 'https://rarelookingorca-n8n.cloudfy.live/webhook/leads-base-v8-separar';
 const WH_SALVAR_ML   = 'https://rarelookingorca-n8n.cloudfy.live/webhook/meus-leads-salvar';
 const WH_BUSCAR_ML   = 'https://rarelookingorca-n8n.cloudfy.live/webhook/meus-leads-buscar';
 
@@ -759,7 +790,7 @@ function switchTab(name) {
 // ──────────────────────────────────────────────────────────────
 function ts() { return new Date().toISOString().slice(0,10); }
 function fmtBRL(val) {
-  return (val || 0).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
+  return (Number(val) || 0).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
 }
 function dlFile(content, name, mime) {
   const blob = new Blob([content], { type: mime });
@@ -1262,8 +1293,11 @@ async function _buscarBaseV8() {
     atualizarPaginacaoDB();
 
     document.getElementById('dbTotal').textContent = dbTotal.toLocaleString('pt-BR');
+    if (data.disponiveis != null) {
+      document.getElementById('dbDisponiveis').textContent = Number(data.disponiveis).toLocaleString('pt-BR');
+    }
     if (dbLeads.length) {
-      const maiorMargem = Math.max(...dbLeads.map(l => l.margem || 0));
+      const maiorMargem = Math.max(...dbLeads.map(l => Number(l.margem) || 0));
       document.getElementById('dbMaiorMargem').textContent = fmtBRL(maiorMargem);
       document.getElementById('btnExportDB').disabled = false;
     }
@@ -1277,7 +1311,7 @@ async function _buscarBaseV8() {
 function renderTabelaDB(leads) {
   if (!leads.length) {
     document.getElementById('tbodyDB').innerHTML = `
-      <tr><td colspan="6">
+      <tr><td colspan="7">
         <div class="empty"><div class="icon">🗄️</div>
         <p>${dbTotal === 0 ? 'Base ainda vazia — extraia os leads V8 primeiro' : 'Nenhum resultado para esta busca'}</p>
         </div>
@@ -1291,6 +1325,7 @@ function renderTabelaDB(leads) {
       <td class="cpf">${l.cpf||'—'}</td>
       <td>${l.nome||'—'}</td>
       <td class="valor">${fmtBRL(l.margem)}</td>
+      <td style="color:var(--fg2);font-size:11px;white-space:nowrap">${l.extraido_em ? new Date(l.extraido_em).toLocaleString('pt-BR', { dateStyle:'short', timeStyle:'short' }) : '—'}</td>
       <td style="color:var(--fg2);font-size:11px">${l.descricao||'—'}</td>
       <td style="color:var(--fg3);font-size:10px;font-family:var(--mono)">${l.id_v8||'—'}</td>
     </tr>`).join('');
@@ -1322,6 +1357,87 @@ function exportarBaseV8CSV() {
     l.partner_id||''
   ].join(','));
   dlFile('﻿' + [header,...rows].join('\n'), `base_v8_${ts()}.csv`, 'text/csv;charset=utf-8');
+}
+
+// ──────────────────────────────────────────────────────────────
+// SEPARAR CPFs DA BASE V8 PARA HIGIENIZAÇÃO
+// ──────────────────────────────────────────────────────────────
+let separadosLeads = [];
+
+async function separarCPFs() {
+  const qtd = parseInt(document.getElementById('qtdSeparar').value);
+  if (!qtd || qtd < 1) {
+    setStatus('statusSeparar', '⚠️ Informe quantos CPFs quer separar.', 'error');
+    return;
+  }
+  const btn = document.getElementById('btnSepararCPFs');
+  btn.disabled = true;
+  btn.textContent = '⏳ Separando...';
+  setStatus('statusSeparar', `⏳ Separando ${qtd.toLocaleString('pt-BR')} CPFs...`, 'info');
+
+  try {
+    const resp = await fetch(WH_SEPARAR_BASE, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ quantidade: qtd })
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+
+    separadosLeads = data.leads || [];
+    const restantes = Number(data.disponiveis || 0);
+    document.getElementById('dbDisponiveis').textContent = restantes.toLocaleString('pt-BR');
+
+    if (!separadosLeads.length) {
+      document.getElementById('separarResultado').style.display = 'none';
+      setStatus('statusSeparar', '⚠️ Não há mais CPFs disponíveis — todos já foram separados. Extraia mais leads da V8.', 'error');
+    } else {
+      document.getElementById('cpfsSeparados').value = separadosLeads.map(l => l.cpf).join('\n');
+      document.getElementById('separarResultado').style.display = 'block';
+      const aviso = separadosLeads.length < qtd ? ` (só havia ${separadosLeads.length.toLocaleString('pt-BR')} disponíveis)` : '';
+      setStatus('statusSeparar',
+        `✅ ${separadosLeads.length.toLocaleString('pt-BR')} CPFs separados${aviso}. Restam ${restantes.toLocaleString('pt-BR')} não separados.`,
+        'success');
+    }
+    _buscarBaseV8();
+  } catch (err) {
+    setStatus('statusSeparar', '❌ Erro ao separar: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '📤 Separar CPFs';
+  }
+}
+
+function copiarSeparados() {
+  const texto = document.getElementById('cpfsSeparados').value;
+  if (!texto) return;
+  const btn = document.getElementById('btnCopiarSeparados');
+  const ok = () => { btn.textContent = '✅ Copiados!'; setTimeout(() => { btn.textContent = '📋 Copiar CPFs'; }, 2000); };
+  navigator.clipboard.writeText(texto).then(ok).catch(() => {
+    const ta = document.getElementById('cpfsSeparados');
+    ta.select();
+    try { document.execCommand('copy'); ok(); } catch (e) {}
+  });
+}
+
+function enviarSeparadosHigienizacao() {
+  const texto = document.getElementById('cpfsSeparados').value;
+  if (!texto) return;
+  const area = document.getElementById('cpfArea');
+  area.value = area.value.trim() ? area.value.trim() + '\n' + texto : texto;
+  area.dispatchEvent(new Event('input'));
+  switchTab('v8');
+}
+
+function baixarSeparadosCSV() {
+  if (!separadosLeads.length) return;
+  const header = 'CPF,Nome,Margem Disponível';
+  const rows = separadosLeads.map(l => [
+    l.cpf || '',
+    `"${(l.nome || '').replace(/"/g, '""')}"`,
+    l.margem || 0
+  ].join(','));
+  dlFile('﻿' + [header, ...rows].join('\n'), `cpfs_separados_${ts()}.csv`, 'text/csv;charset=utf-8');
 }
 
 // ──────────────────────────────────────────────────────────────
