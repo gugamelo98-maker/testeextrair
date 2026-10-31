@@ -1194,6 +1194,8 @@ async function extrairBaseV8() {
           setStatus('statusDB',
             `✅ Extração concluída! ${finalSalvos.toLocaleString('pt-BR')} leads salvos no banco de dados.`,
             'success');
+          // Carregar tabela com os leads salvos
+          await _buscarBaseV8();
         }
       } catch(e) { /* ignorar erros de poll */ }
     }, 10000);
