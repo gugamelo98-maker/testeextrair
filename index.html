@@ -1164,6 +1164,9 @@ async function extrairBaseV8() {
     // Poll: checar quantidade no banco a cada 10s
     let pollCount = 0;
     const META = qtd;
+    // A V8 repete CPFs entre páginas, então o total quase nunca bate a META.
+    // Considera concluído quando a contagem fica estável por 3 checagens (~30s).
+    let ultimoSalvos = -1, checagensEstaveis = 0;
     const pollInterval = setInterval(async () => {
       pollCount++;
       try {
@@ -1183,8 +1186,12 @@ async function extrairBaseV8() {
         // Atualizar tabela com os leads já salvos
         await _buscarBaseV8();
 
-        // Parar poll quando >= META ou após 15 min (90 tentativas × 10s)
-        if (salvos >= META || pollCount >= 90) {
+        if (salvos === ultimoSalvos) checagensEstaveis++;
+        else { checagensEstaveis = 0; ultimoSalvos = salvos; }
+
+        // Parar poll quando >= META, quando a contagem estabiliza (~30s sem mudar)
+        // ou após 15 min (90 tentativas × 10s)
+        if (salvos >= META || checagensEstaveis >= 3 || pollCount >= 90) {
           clearInterval(pollInterval);
           btn.disabled = false;
           btn.textContent = '🗄️ Extrair e Salvar Base V8';
