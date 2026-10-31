@@ -520,6 +520,12 @@
         <div class="progress-bg"><div class="progress-fill" id="progressBarV8"></div></div>
         <div class="progress-text" id="progressTextV8">Aguardando...</div>
       </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;flex-wrap:wrap;">
+        <div class="cpf-hint" id="pendentesInfo">⏳ Termos aguardando retorno da V8: —</div>
+        <button class="btn-secondary" id="btnRechecar" onclick="rechecarPendentes()" style="margin-top:0;white-space:nowrap;">🔁 Rechecar pendentes</button>
+      </div>
+      <div class="status-box" id="statusRecheck"></div>
     </div>
 
     <!-- Stats V8 -->
@@ -757,6 +763,7 @@
 // ──────────────────────────────────────────────────────────────
 const WEBHOOK_HUB    = 'https://rarelookingorca-n8n.cloudfy.live/webhook/hub-credito-leads';
 const WEBHOOK_V8     = 'https://rarelookingorca-n8n.cloudfy.live/webhook/v8-higienizacao-clt';
+const WEBHOOK_RECHECAR = 'https://rarelookingorca-n8n.cloudfy.live/webhook/v8-rechecar-pendentes';
 const WH_SALVAR_BASE  = 'https://rarelookingorca-n8n.cloudfy.live/webhook/leads-base-v8-salvar';
 const WH_BUSCAR_BASE  = 'https://rarelookingorca-n8n.cloudfy.live/webhook/leads-base-v8-buscar';
 const WH_EXTRAIR_BASE = 'https://rarelookingorca-n8n.cloudfy.live/webhook/extrair-base-v8';
@@ -1067,12 +1074,83 @@ async function iniciarHigienizacao() {
       ['btnV8CSV','btnV8JSON','btnSalvarV8Hig'].forEach(id => document.getElementById(id).disabled = false);
       document.getElementById('tab-v8').classList.add('has-data');
     }
+
+    // Terminou: consulta de novo, pelo ID do termo, todos que ficaram sem retorno
+    await rechecarPendentes();
   } catch(err) {
     setStatus('statusV8', '❌ Erro: ' + err.message, 'error');
     setProgress('progressBarV8','progressTextV8','progressWrapV8', 0, 'Falha');
   } finally {
     btn.disabled = false;
     btn.textContent = '🔍 Higienizar com V8';
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
+// NOVA CONSULTA DOS TERMOS PENDENTES (pelo ID do termo, sem criar termo novo)
+// ──────────────────────────────────────────────────────────────
+let rechecando = false;
+
+async function rechecarPendentes() {
+  if (rechecando) return;
+  rechecando = true;
+  const btn = document.getElementById('btnRechecar');
+  btn.disabled = true;
+  btn.textContent = '⏳ Rechecando...';
+
+  // Cada termo é consultado no máximo uma vez por rodada
+  const desde = new Date().toISOString();
+  let verificados = 0, salvos = 0, pendentes = null;
+
+  setStatus('statusRecheck', '🔁 Consultando de novo os termos sem retorno da V8...', 'info');
+  try {
+    for (let rodada = 0; rodada < 60; rodada++) {
+      const resp = await fetch(WEBHOOK_RECHECAR, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ desde })
+      });
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const d = await resp.json();
+
+      verificados += d.verificados || 0;
+      salvos += d.salvos || 0;
+      pendentes = d.pendentes;
+
+      const novos = (d.leads || []).map(l => ({
+        cpf: l.cpf, name: l.nome, status: l.status,
+        availableMarginValue: Number(l.margem) || 0,
+        description: 'Retornou na nova consulta'
+      }));
+      if (novos.length) {
+        v8Leads = v8Leads.concat(novos);
+        renderTabelaV8(v8Leads);
+        const atual = parseInt((document.getElementById('v8ComMargem').textContent || '0').replace(/\D/g, '')) || 0;
+        document.getElementById('v8ComMargem').textContent = (atual + novos.length).toLocaleString('pt-BR');
+        ['btnV8CSV','btnV8JSON','btnSalvarV8Hig'].forEach(id => document.getElementById(id).disabled = false);
+      }
+
+      document.getElementById('pendentesInfo').textContent =
+        `⏳ Termos aguardando retorno da V8: ${Number(pendentes || 0).toLocaleString('pt-BR')}`;
+      setStatus('statusRecheck',
+        `🔁 Nova consulta: ${verificados.toLocaleString('pt-BR')} termos verificados · ${salvos.toLocaleString('pt-BR')} voltaram com margem...`,
+        'info');
+
+      if (!d.verificados) break;
+    }
+
+    const restantes = Number(pendentes || 0);
+    setStatus('statusRecheck',
+      `✅ Nova consulta concluída: ${verificados.toLocaleString('pt-BR')} termos verificados · ` +
+      `${salvos.toLocaleString('pt-BR')} voltaram com margem e foram salvos em Meus Leads` +
+      (restantes ? ` · ${restantes.toLocaleString('pt-BR')} ainda sem retorno (clique em Rechecar mais tarde)` : ''),
+      'success');
+  } catch (err) {
+    setStatus('statusRecheck', '❌ Erro na nova consulta: ' + err.message, 'error');
+  } finally {
+    rechecando = false;
+    btn.disabled = false;
+    btn.textContent = '🔁 Rechecar pendentes';
   }
 }
 
