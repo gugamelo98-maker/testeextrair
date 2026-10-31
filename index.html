@@ -1185,6 +1185,9 @@ async function extrairBaseV8() {
           `⏳ Extraindo... ${salvos.toLocaleString('pt-BR')} de ${META.toLocaleString('pt-BR')} leads salvos no banco.`,
           'info');
 
+        // Atualizar tabela com os leads já salvos
+        await _buscarBaseV8();
+
         // Parar poll quando >= META ou após 15 min (90 tentativas × 10s)
         if (salvos >= META || pollCount >= 90) {
           clearInterval(pollInterval);
@@ -1196,7 +1199,6 @@ async function extrairBaseV8() {
           setStatus('statusDB',
             `✅ Extração concluída! ${finalSalvos.toLocaleString('pt-BR')} leads salvos no banco de dados.`,
             'success');
-          await buscarBaseV8();
         }
       } catch(e) { /* ignorar erros de poll */ }
     }, 10000);
@@ -1212,6 +1214,7 @@ async function extrairBaseV8() {
         const pct = Math.min(Math.round(salvos / META * 100), 5);
         setProgress('progressBarDB','progressTextDB','progressWrapDB', Math.max(pct, 2),
           `⏳ ${salvos.toLocaleString('pt-BR')} / ${META.toLocaleString('pt-BR')} leads salvos`);
+        await _buscarBaseV8();
       } catch(e) {}
     }, 5000);
 
