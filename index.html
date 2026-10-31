@@ -663,42 +663,66 @@ async function iniciarHigienizacao() {
   document.getElementById('tbodyV8').innerHTML = '';
   ['v8Total','v8ComMargem','v8SemMargem','v8Taxa'].forEach(id => document.getElementById(id).textContent = '—');
 
-  setStatus('statusV8', `🔐 Enviando ${cpfs.length} CPF${cpfs.length>1?'s':''} para V8...`, 'info');
-  setProgress('progressBarV8','progressTextV8','progressWrapV8', 5, 'Autenticando na V8...');
-
+  const LOTE = 10;
+  const totalCPFs = cpfs.length;
+  const totalLotes = Math.ceil(totalCPFs / LOTE);
   const inicio = Date.now();
+  let totalComMargem = 0;
+  let totalSemMargem = 0;
+  let totalProcessados = 0;
+  let todosLeads = [];
+
+  setStatus('statusV8', `🔐 Iniciando higienização de ${totalCPFs} CPFs em ${totalLotes} lote${totalLotes>1?'s':''}...`, 'info');
+  setProgress('progressBarV8','progressTextV8','progressWrapV8', 2, 'Autenticando na V8...');
+
   try {
-    setProgress('progressBarV8','progressTextV8','progressWrapV8', 15, `Consultando ${cpfs.length} CPFs...`);
+    for (let i = 0; i < totalLotes; i++) {
+      const lote = cpfs.slice(i * LOTE, (i + 1) * LOTE);
+      const pct = Math.round(((i) / totalLotes) * 90) + 5;
+      setProgress('progressBarV8','progressTextV8','progressWrapV8', pct,
+        `Lote ${i+1}/${totalLotes} · ${totalProcessados}/${totalCPFs} CPFs processados...`);
+      setStatus('statusV8',
+        `⏳ Processando lote ${i+1} de ${totalLotes} (${lote.length} CPFs)...`, 'info');
 
-    const resp = await fetch(WEBHOOK_V8, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cpfs })
-    });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+      const resp = await fetch(WEBHOOK_V8, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cpfs: lote })
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status} no lote ${i+1}`);
 
-    setProgress('progressBarV8','progressTextV8','progressWrapV8', 85, 'Processando resultados...');
-    const data = await resp.json();
+      const data = await resp.json();
+      const loteLeads = data.leads || [];
+      todosLeads = todosLeads.concat(loteLeads);
+      totalComMargem += data.comMargem || 0;
+      totalSemMargem += data.semMargem || 0;
+      totalProcessados += lote.length;
+
+      // Atualiza stats parciais em tempo real
+      const taxaParcial = totalProcessados > 0
+        ? ((totalComMargem / totalProcessados) * 100).toFixed(0) + '%' : '0%';
+      document.getElementById('v8Total').textContent     = totalProcessados.toLocaleString('pt-BR');
+      document.getElementById('v8ComMargem').textContent = totalComMargem.toLocaleString('pt-BR');
+      document.getElementById('v8SemMargem').textContent = totalSemMargem.toLocaleString('pt-BR');
+      document.getElementById('v8Taxa').textContent      = taxaParcial;
+      v8Leads = todosLeads;
+      renderTabelaV8(v8Leads);
+    }
 
     const tempo = ((Date.now() - inicio) / 1000).toFixed(1);
-    const comMargem  = data.comMargem  || 0;
-    const semMargem  = data.semMargem  || 0;
-    const total      = data.total      || cpfs.length;
-    const taxa       = total > 0 ? ((comMargem / total) * 100).toFixed(0) + '%' : '0%';
-    v8Leads = data.leads || [];
+    const taxa = totalCPFs > 0 ? ((totalComMargem / totalCPFs) * 100).toFixed(0) + '%' : '0%';
 
-    document.getElementById('v8Total').textContent     = total.toLocaleString('pt-BR');
-    document.getElementById('v8ComMargem').textContent = comMargem.toLocaleString('pt-BR');
-    document.getElementById('v8SemMargem').textContent = semMargem.toLocaleString('pt-BR');
+    document.getElementById('v8Total').textContent     = totalCPFs.toLocaleString('pt-BR');
+    document.getElementById('v8ComMargem').textContent = totalComMargem.toLocaleString('pt-BR');
+    document.getElementById('v8SemMargem').textContent = totalSemMargem.toLocaleString('pt-BR');
     document.getElementById('v8Taxa').textContent      = taxa;
 
-    renderTabelaV8(v8Leads);
-    setProgress('progressBarV8','progressTextV8','progressWrapV8', 100, `✅ ${comMargem} leads com margem`);
+    setProgress('progressBarV8','progressTextV8','progressWrapV8', 100, `✅ ${totalComMargem} leads com margem`);
     setStatus('statusV8',
-      `✅ Higienização concluída em ${tempo}s · ${comMargem} de ${total} CPFs têm margem CLT disponível`,
+      `✅ Higienização concluída em ${tempo}s · ${totalComMargem} de ${totalCPFs} CPFs têm margem CLT disponível`,
       'success');
 
-    if (v8Leads.length) {
+    if (todosLeads.length) {
       document.getElementById('btnV8CSV').disabled  = false;
       document.getElementById('btnV8JSON').disabled = false;
       document.getElementById('tab-v8').classList.add('has-data');
