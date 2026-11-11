@@ -726,6 +726,44 @@
       </div>
     </div>
 
+    <!-- Extrair leads sem repetir -->
+    <div class="card">
+      <div class="card-label">Extrair Leads (sem repetir)</div>
+      <p style="font-size:13px;color:var(--fg2);margin-bottom:14px;">
+        Tira leads que <strong>ainda não foram extraídos</strong> (maior margem primeiro) e marca cada um como extraído — eles não saem de novo em outra extração.
+        Disponíveis agora: <strong id="mlDisponiveis">—</strong>
+      </p>
+      <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:14px;">
+        <div style="min-width:140px;">
+          <label style="font-size:11px;color:var(--fg3);display:block;margin-bottom:5px;">Quantidade</label>
+          <input type="number" id="qtdExtrairML" class="search-input" style="width:100%" min="1" step="1" value="100">
+        </div>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--fg2);padding-bottom:10px;cursor:pointer;">
+          <input type="checkbox" id="todosML" onchange="document.getElementById('qtdExtrairML').disabled=this.checked"> Todos
+        </label>
+        <div style="flex:1;min-width:180px;">
+          <label style="font-size:11px;color:var(--fg3);display:block;margin-bottom:5px;">Origem</label>
+          <select id="origemExtrairML" class="search-input" style="width:100%">
+            <option value="">Todas as origens</option>
+            <option value="hub_credito">Hub Crédito</option>
+            <option value="v8_higienizacao">V8 Higienização</option>
+            <option value="v8_extracao">V8 Extração</option>
+          </select>
+        </div>
+        <button class="btn-main" id="btnExtrairML" onclick="extrairMeusLeads()" style="margin-top:0;white-space:nowrap;">
+          📤 Extrair Leads
+        </button>
+      </div>
+      <div class="status-box" id="statusExtrairML"></div>
+      <div id="extrairMLResultado" style="display:none;">
+        <textarea class="cpf-area" id="cpfsExtraidosML" readonly style="min-height:120px;"></textarea>
+        <div class="dl-row" style="margin-top:10px;margin-bottom:0;gap:8px;flex-wrap:wrap;">
+          <button class="dl-btn purple" id="btnCopiarML" onclick="copiarExtraidosML()">📋 Copiar CPFs</button>
+          <button class="dl-btn purple" onclick="baixarExtraidosMLCSV()">⬇ Baixar CSV</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Filtros -->
     <div class="card">
       <div class="card-label">Filtrar e Buscar</div>
@@ -746,11 +784,11 @@
         <table>
           <thead>
             <tr>
-              <th>#</th><th>CPF</th><th>Nome</th><th>Margem</th><th>Status</th><th>Origem</th><th>Na Base V8</th><th>Margem V8</th>
+              <th>#</th><th>CPF</th><th>Nome</th><th>Margem</th><th>Status</th><th>Origem</th><th>Extraído em</th><th>Na Base V8</th><th>Margem V8</th>
             </tr>
           </thead>
           <tbody id="tbodyML">
-            <tr><td colspan="8">
+            <tr><td colspan="9">
               <div class="empty"><div class="icon">📋</div><p>Salve leads via Hub Crédito ou Higienização V8 para vê-los aqui</p></div>
             </td></tr>
           </tbody>
@@ -783,6 +821,7 @@ const WH_SEPARAR_BASE = 'https://rarelookingorca-n8n.cloudfy.live/webhook/leads-
 document.getElementById('dataAte').value = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
 const WH_SALVAR_ML   = 'https://rarelookingorca-n8n.cloudfy.live/webhook/meus-leads-salvar';
 const WH_BUSCAR_ML   = 'https://rarelookingorca-n8n.cloudfy.live/webhook/meus-leads-buscar';
+const WH_SEPARAR_ML  = 'https://rarelookingorca-n8n.cloudfy.live/webhook/meus-leads-separar';
 
 // V8 API (para extração direta)
 const V8_AUTH_URL = 'https://auth.v8sistema.com/oauth/token';
@@ -1527,6 +1566,9 @@ async function _buscarMeusLeads() {
 
     mlLeads = data.leads || [];
     mlTotal = data.total || 0;
+    if (data.disponiveis != null && !origem) {
+      document.getElementById('mlDisponiveis').textContent = Number(data.disponiveis).toLocaleString('pt-BR');
+    }
 
     renderTabelaML(mlLeads);
     atualizarPaginacaoML();
@@ -1547,10 +1589,87 @@ async function _buscarMeusLeads() {
   }
 }
 
+// ──────────────────────────────────────────────────────────────
+// EXTRAIR MEUS LEADS SEM REPETIR (marca extraido_em no banco)
+// ──────────────────────────────────────────────────────────────
+let extraidosML = [];
+
+async function extrairMeusLeads() {
+  const todos = document.getElementById('todosML').checked;
+  const qtd = parseInt(document.getElementById('qtdExtrairML').value);
+  const origem = document.getElementById('origemExtrairML').value;
+  if (!todos && (!qtd || qtd < 1)) {
+    setStatus('statusExtrairML', '⚠️ Informe a quantidade ou marque "Todos".', 'error');
+    return;
+  }
+  const btn = document.getElementById('btnExtrairML');
+  btn.disabled = true;
+  btn.textContent = '⏳ Extraindo...';
+  setStatus('statusExtrairML', todos ? '⏳ Extraindo todos os leads ainda não extraídos...' : `⏳ Extraindo ${qtd.toLocaleString('pt-BR')} leads...`, 'info');
+
+  try {
+    const resp = await fetch(WH_SEPARAR_ML, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ quantidade: todos ? 0 : qtd, todos, origem })
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+
+    extraidosML = data.leads || [];
+    const restantes = Number(data.disponiveis || 0);
+    if (!origem) document.getElementById('mlDisponiveis').textContent = restantes.toLocaleString('pt-BR');
+
+    if (!extraidosML.length) {
+      document.getElementById('extrairMLResultado').style.display = 'none';
+      setStatus('statusExtrairML', '⚠️ Não há leads disponíveis — todos desta origem já foram extraídos.', 'error');
+    } else {
+      document.getElementById('cpfsExtraidosML').value = extraidosML.map(l => l.cpf).join('\n');
+      document.getElementById('extrairMLResultado').style.display = 'block';
+      const aviso = !todos && extraidosML.length < qtd ? ` (só havia ${extraidosML.length.toLocaleString('pt-BR')} disponíveis)` : '';
+      setStatus('statusExtrairML',
+        `✅ ${extraidosML.length.toLocaleString('pt-BR')} leads extraídos e marcados${aviso}. Restam ${restantes.toLocaleString('pt-BR')} não extraídos${origem ? ' nesta origem' : ''}. Baixe o CSV ou copie agora.`,
+        'success');
+    }
+    _buscarMeusLeads();
+  } catch (err) {
+    setStatus('statusExtrairML', '❌ Erro ao extrair: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '📤 Extrair Leads';
+  }
+}
+
+function copiarExtraidosML() {
+  const texto = document.getElementById('cpfsExtraidosML').value;
+  if (!texto) return;
+  const btn = document.getElementById('btnCopiarML');
+  const ok = () => { btn.textContent = '✅ Copiados!'; setTimeout(() => { btn.textContent = '📋 Copiar CPFs'; }, 2000); };
+  navigator.clipboard.writeText(texto).then(ok).catch(() => {
+    const ta = document.getElementById('cpfsExtraidosML');
+    ta.select();
+    try { document.execCommand('copy'); ok(); } catch (e) {}
+  });
+}
+
+function baixarExtraidosMLCSV() {
+  if (!extraidosML.length) return;
+  const origemLabel = { hub_credito: 'Hub Crédito', v8_higienizacao: 'V8 Higienização', v8_extracao: 'V8 Extração' };
+  const header = 'CPF,Nome,Margem,Status,Origem';
+  const rows = extraidosML.map(l => [
+    l.cpf || '',
+    `"${(l.nome || '').replace(/"/g, '""')}"`,
+    Number(l.margem) || 0,
+    l.status || '',
+    origemLabel[l.origem] || l.origem || ''
+  ].join(','));
+  dlFile('\uFEFF' + [header, ...rows].join('\n'), `meus_leads_extraidos_${ts()}.csv`, 'text/csv;charset=utf-8');
+}
+
 function renderTabelaML(leads) {
   if (!leads.length) {
     document.getElementById('tbodyML').innerHTML = `
-      <tr><td colspan="8">
+      <tr><td colspan="9">
         <div class="empty"><div class="icon">📋</div>
         <p>${mlTotal === 0 ? 'Nenhum lead salvo ainda — extraia do Hub ou higienize na V8 e clique em "Salvar em Meus Leads"' : 'Nenhum resultado para esta busca'}</p>
         </div>
@@ -1567,6 +1686,7 @@ function renderTabelaML(leads) {
       <td class="valor">${fmtBRL(l.margem)}</td>
       <td>${l.status||'—'}</td>
       <td style="font-size:11px;color:var(--fg2)">${origemLabel[l.origem]||l.origem||'—'}</td>
+      <td style="font-size:11px;color:var(--fg2);white-space:nowrap">${l.extraido_em ? new Date(l.extraido_em).toLocaleString('pt-BR', { dateStyle:'short', timeStyle:'short' }) : '—'}</td>
       <td class="${l.na_base_v8 ? 'badge-ok' : 'badge-no'}" style="text-align:center">
         ${l.na_base_v8 ? '✅ Sim' : '—'}
       </td>
