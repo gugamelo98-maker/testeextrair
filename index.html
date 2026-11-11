@@ -584,9 +584,17 @@
     <div class="card">
       <div class="card-label">Extrair Base V8 SUCCESS</div>
       <p style="font-size:13px;color:var(--fg2);margin-bottom:14px;">
-        A extração roda no servidor n8n. Escolha quantos leads quer salvar no banco.
+        A extração roda no servidor n8n. Escolha o período e a quantidade. Os leads vão para a Base V8 <strong>e</strong> para Meus Leads — CPF que já existe é ignorado (não repete).
       </p>
       <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:14px;">
+        <div style="min-width:150px;">
+          <label style="font-size:11px;color:var(--fg3);display:block;margin-bottom:5px;">De</label>
+          <input type="date" id="dataDe" class="search-input" style="width:100%" value="2026-11-01">
+        </div>
+        <div style="min-width:150px;">
+          <label style="font-size:11px;color:var(--fg3);display:block;margin-bottom:5px;">Até</label>
+          <input type="date" id="dataAte" class="search-input" style="width:100%">
+        </div>
         <div style="flex:1;min-width:180px;">
           <label style="font-size:11px;color:var(--fg3);display:block;margin-bottom:5px;">Quantidade de leads</label>
           <select id="qtdExtrair" class="search-input" style="width:100%">
@@ -596,7 +604,7 @@
             <option value="500">500 leads (50 páginas)</option>
             <option value="1000">1.000 leads (100 páginas)</option>
             <option value="5000">5.000 leads (500 páginas)</option>
-            <option value="14395">Todos — 14.395 leads (1.440 páginas)</option>
+            <option value="todos">Todos do período</option>
           </select>
         </div>
         <button class="btn-main" id="btnExtrairBaseV8" onclick="extrairBaseV8()" style="margin-top:0;white-space:nowrap;">
@@ -727,6 +735,7 @@
           <option value="">Todas as origens</option>
           <option value="hub_credito">Hub Crédito</option>
           <option value="v8_higienizacao">V8 Higienização</option>
+          <option value="v8_extracao">V8 Extração</option>
         </select>
         <button class="dl-btn purple" onclick="exportarMeusLeadsCSV()" id="btnExportML" disabled>⬇ Exportar CSV</button>
       </div>
@@ -769,6 +778,9 @@ const WH_BUSCAR_BASE  = 'https://rarelookingorca-n8n.cloudfy.live/webhook/leads-
 const WH_EXTRAIR_BASE = 'https://rarelookingorca-n8n.cloudfy.live/webhook/extrair-base-v8';
 const WH_CONTAR_BASE  = 'https://rarelookingorca-n8n.cloudfy.live/webhook/contar-base-v8';
 const WH_SEPARAR_BASE = 'https://rarelookingorca-n8n.cloudfy.live/webhook/leads-base-v8-separar';
+
+// Extração: "Até" começa em hoje (horário de Brasília)
+document.getElementById('dataAte').value = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
 const WH_SALVAR_ML   = 'https://rarelookingorca-n8n.cloudfy.live/webhook/meus-leads-salvar';
 const WH_BUSCAR_ML   = 'https://rarelookingorca-n8n.cloudfy.live/webhook/meus-leads-buscar';
 
@@ -1228,117 +1240,87 @@ function baixarV8JSON() {
 let dbLeads = [], dbPagina = 1, dbTotal = 0, dbBusca = '';
 
 async function extrairBaseV8() {
-  const qtd = parseInt(document.getElementById('qtdExtrair').value) || 1000;
-  const totalPaginas = Math.ceil(qtd / 10);
+  const qtdSel = document.getElementById('qtdExtrair').value;
+  const qtd = qtdSel === 'todos' ? 0 : (parseInt(qtdSel) || 1000);
+  const de = document.getElementById('dataDe').value;
+  const ate = document.getElementById('dataAte').value;
+  if (!de || !ate) { setStatus('statusDB', '⚠️ Escolha as datas De e Até.', 'error'); return; }
+  if (de > ate) { setStatus('statusDB', '⚠️ A data "De" precisa ser antes da data "Até".', 'error'); return; }
+
+  // Datas no horário de Brasília (dia inteiro)
+  const startDate = new Date(`${de}T00:00:00-03:00`).toISOString();
+  const endDate = new Date(`${ate}T23:59:59.999-03:00`).toISOString();
+  const periodo = `${de.split('-').reverse().join('/')} a ${ate.split('-').reverse().join('/')}`;
+  const qtdTxt = qtd ? `até ${qtd.toLocaleString('pt-BR')} leads` : 'todos os leads';
 
   const btn = document.getElementById('btnExtrairBaseV8');
   btn.disabled = true;
   btn.textContent = '⏳ Extraindo...';
 
-  setStatus('statusDB',
-    `🔐 Enviando para o n8n... Buscando ${qtd.toLocaleString('pt-BR')} leads (${totalPaginas} páginas). Aguarde.`,
-    'info');
-  setProgress('progressBarDB','progressTextDB','progressWrapDB', 10, 'n8n autenticando na V8...');
+  setStatus('statusDB', `🔐 Enviando para o n8n... Buscando ${qtdTxt} SUCCESS de ${periodo}.`, 'info');
+  setProgress('progressBarDB','progressTextDB','progressWrapDB', 5, 'n8n autenticando na V8...');
 
-  // Animar progresso enquanto aguarda (o n8n demora)
-  let fakePct = 10;
-  const ticker = setInterval(() => {
-    fakePct = Math.min(fakePct + 0.5, 92);
-    const pagesEstimated = Math.round((fakePct - 10) / 82 * 144);
-    setProgress('progressBarDB','progressTextDB','progressWrapDB', fakePct,
-      `Servidor processando... ~${pagesEstimated}/144 páginas`);
-  }, 1500);
+  // Contagem antes de começar, para mostrar só os leads novos
+  const contar = async () => {
+    const r = await fetch(WH_CONTAR_BASE, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return (await r.json()).total_salvo || 0;
+  };
+  let inicial = 0;
+  try { inicial = await contar(); } catch (e) {}
 
   try {
     const resp = await fetch(WH_EXTRAIR_BASE, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ limite: qtd })
+      body: JSON.stringify({ limite: qtd || null, startDate, endDate })
     });
-
-    clearInterval(ticker);
-
     if (!resp.ok) {
       const txt = await resp.text();
       throw new Error(`HTTP ${resp.status} — ${txt.slice(0,200)}`);
     }
 
-    // n8n com onReceived responde imediatamente — iniciar poll de progresso
     document.getElementById('tab-db').classList.add('has-data');
+    setStatus('statusDB', `⏳ Extração de ${periodo} rodando no servidor... Acompanhe abaixo.`, 'info');
 
-    setStatus('statusDB',
-      '⏳ Extração rodando no servidor... Acompanhe o progresso abaixo.',
-      'info');
-
-    // Poll: checar quantidade no banco a cada 10s
-    let pollCount = 0;
-    const META = qtd;
-    // A V8 repete CPFs entre páginas, então o total quase nunca bate a META.
-    // Considera concluído quando a contagem fica estável por 3 checagens (~30s).
-    let ultimoSalvos = -1, checagensEstaveis = 0;
+    // Poll a cada 10s. CPF que já existia é ignorado, então o total raramente bate a meta:
+    // considera concluído quando não entra lead novo por ~60s (6 checagens).
+    let pollCount = 0, ultimo = -1, estaveis = 0;
     const pollInterval = setInterval(async () => {
       pollCount++;
       try {
-        const r = await fetch(WH_CONTAR_BASE, { method: 'POST',
-          headers: { 'Content-Type': 'application/json' }, body: '{}' });
-        if (!r.ok) return;
-        const d = await r.json();
-        const salvos = d.total_salvo || 0;
-        const pct = Math.min(Math.round(salvos / META * 100), 99);
-
-        setProgress('progressBarDB','progressTextDB','progressWrapDB', pct,
-          `⏳ ${salvos.toLocaleString('pt-BR')} / ${META.toLocaleString('pt-BR')} leads salvos`);
+        const novos = Math.max(0, (await contar()) - inicial);
+        const pct = qtd ? Math.min(Math.round(novos / qtd * 100), 99) : Math.min(5 + pollCount, 95);
+        const meta = qtd ? ` de até ${qtd.toLocaleString('pt-BR')}` : '';
+        setProgress('progressBarDB','progressTextDB','progressWrapDB', Math.max(pct, 5),
+          `⏳ ${novos.toLocaleString('pt-BR')} leads novos${meta}`);
         setStatus('statusDB',
-          `⏳ Extraindo... ${salvos.toLocaleString('pt-BR')} de ${META.toLocaleString('pt-BR')} leads salvos no banco.`,
-          'info');
-
-        // Atualizar tabela com os leads já salvos
+          `⏳ Extraindo ${periodo}... ${novos.toLocaleString('pt-BR')} leads novos salvos (Base V8 + Meus Leads).`, 'info');
         await _buscarBaseV8();
 
-        if (salvos === ultimoSalvos) checagensEstaveis++;
-        else { checagensEstaveis = 0; ultimoSalvos = salvos; }
+        if (novos === ultimo) estaveis++; else { estaveis = 0; ultimo = novos; }
 
-        // Parar poll quando >= META, quando a contagem estabiliza (~30s sem mudar)
-        // ou após 15 min (90 tentativas × 10s)
-        if (salvos >= META || checagensEstaveis >= 3 || pollCount >= 90) {
+        if ((qtd && novos >= qtd) || estaveis >= 6 || pollCount >= 720) {
           clearInterval(pollInterval);
           btn.disabled = false;
-          btn.textContent = '🗄️ Extrair e Salvar Base V8';
-          const finalSalvos = salvos;
+          btn.textContent = '🗄️ Extrair e Salvar';
           setProgress('progressBarDB','progressTextDB','progressWrapDB', 100,
-            `✅ ${finalSalvos.toLocaleString('pt-BR')} leads salvos`);
+            `✅ ${novos.toLocaleString('pt-BR')} leads novos`);
           setStatus('statusDB',
-            `✅ Extração concluída! ${finalSalvos.toLocaleString('pt-BR')} leads salvos no banco de dados.`,
+            `✅ Extração de ${periodo} concluída! ${novos.toLocaleString('pt-BR')} leads novos salvos na Base V8 e em Meus Leads. CPFs que já existiam foram ignorados.`,
             'success');
-          // Carregar tabela com os leads salvos
           await _buscarBaseV8();
         }
       } catch(e) { /* ignorar erros de poll */ }
     }, 10000);
 
-    // Primeira checagem imediata após 5s
-    setTimeout(async () => {
-      try {
-        const r = await fetch(WH_CONTAR_BASE, { method: 'POST',
-          headers: { 'Content-Type': 'application/json' }, body: '{}' });
-        if (!r.ok) return;
-        const d = await r.json();
-        const salvos = d.total_salvo || 0;
-        const pct = Math.min(Math.round(salvos / META * 100), 5);
-        setProgress('progressBarDB','progressTextDB','progressWrapDB', Math.max(pct, 2),
-          `⏳ ${salvos.toLocaleString('pt-BR')} / ${META.toLocaleString('pt-BR')} leads salvos`);
-        await _buscarBaseV8();
-      } catch(e) {}
-    }, 5000);
-
-    return; // btn fica disabled até poll terminar
+    return; // btn fica disabled até o poll terminar
 
   } catch(err) {
-    clearInterval(ticker);
     setStatus('statusDB', '❌ Erro: ' + err.message, 'error');
     setProgress('progressBarDB','progressTextDB','progressWrapDB', 0, 'Falha');
     btn.disabled = false;
-    btn.textContent = '🗄️ Extrair e Salvar Base V8';
+    btn.textContent = '🗄️ Extrair e Salvar';
   }
 }
 
@@ -1576,7 +1558,7 @@ function renderTabelaML(leads) {
     return;
   }
   const offset = (mlPagina - 1) * PAGE_SIZE;
-  const origemLabel = { hub_credito: '🏦 Hub', v8_higienizacao: '🔍 V8 Hig.' };
+  const origemLabel = { hub_credito: '🏦 Hub', v8_higienizacao: '🔍 V8 Hig.', v8_extracao: '🗄️ V8 Extr.' };
   document.getElementById('tbodyML').innerHTML = leads.map((l,i) => `
     <tr>
       <td>${offset + i + 1}</td>
