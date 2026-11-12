@@ -423,6 +423,10 @@
       <span>📋 Meus Leads</span>
       <span class="tab-dot"></span>
     </button>
+    <button class="tab-btn" onclick="switchTab('fgts')" id="tab-fgts">
+      <span>💰 Simular FGTS</span>
+      <span class="tab-dot"></span>
+    </button>
   </div>
 
   <!-- ═══════════════════ ABA HUB CRÉDITO ═══════════════════ -->
@@ -802,6 +806,59 @@
     </div>
   </div>
 
+  <!-- ═══════════════════ ABA SIMULAR FGTS ═══════════════════ -->
+  <div class="tab-panel" id="panel-fgts">
+    <div class="info-banner">
+      💰 Simula o <strong>Saque-Aniversário FGTS</strong> por CPF. Consulta o saldo em <strong>BMS e Girotech</strong>, simula em <strong>QI e Cartos</strong> em todas as tabelas e mostra o <strong>maior valor líquido a liberar</strong>. Só tem valor quem autorizou o banco no app do FGTS.
+    </div>
+    <div class="card">
+      <div class="card-label">CPFs para simular FGTS</div>
+      <textarea class="cpf-area" id="cpfFgts" placeholder="Cole os CPFs — um por linha, ou separados por vírgula/espaço"></textarea>
+      <div class="cpf-hint" id="cpfFgtsCount" style="margin-top:6px;">Nenhum CPF detectado</div>
+      <button class="btn-main" id="btnSimularFgts" onclick="simularFgts()">💰 Simular FGTS</button>
+      <div style="font-size:11px;color:var(--fg3);margin-top:8px;">⚠️ Cada CPF gera consultas de saldo na V8, que podem ser cobradas. Comece com poucos. A consulta de saldo é demorada (~1 min por CPF).</div>
+      <div class="status-box" id="statusFgts"></div>
+      <div class="progress-wrap" id="progressWrapFgts">
+        <div class="progress-bg"><div class="progress-fill" id="progressBarFgts"></div></div>
+        <div class="progress-text" id="progressTextFgts">Aguardando...</div>
+      </div>
+    </div>
+    <div class="stats-4">
+      <div class="stat-box"><div class="stat-num" id="fgtsTotal">—</div><div class="stat-lbl">Simulados</div></div>
+      <div class="stat-box green"><div class="stat-num" id="fgtsComSaldo">—</div><div class="stat-lbl">Com saldo</div></div>
+      <div class="stat-box"><div class="stat-num" id="fgtsLiquidoTotal">—</div><div class="stat-lbl">Líquido (página)</div></div>
+      <div class="stat-box yellow"><div class="stat-num" id="fgtsMaior">—</div><div class="stat-lbl">Maior líquido</div></div>
+    </div>
+    <div class="card">
+      <div class="card-label">Resultados</div>
+      <div class="dl-row" style="margin-bottom:0;gap:8px;">
+        <input type="text" class="search-input" id="searchFgts" placeholder="Buscar por CPF..." oninput="buscarFgts()">
+        <select class="filter-sel" id="filterFgts" onchange="buscarFgts()">
+          <option value="">Todos os status</option>
+          <option value="COM_SALDO">Com saldo</option>
+          <option value="SEM_AUTORIZACAO">Sem autorização</option>
+          <option value="SEM_SALDO">Sem saldo</option>
+          <option value="SEM_SIMULACAO">Sem simulação</option>
+        </select>
+        <button class="dl-btn purple" onclick="exportarFgtsCSV()" id="btnExportFgts" disabled>⬇ Exportar CSV</button>
+      </div>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div class="table-wrap" style="border-radius:12px;">
+        <table><thead><tr>
+          <th>#</th><th>CPF</th><th>Status</th><th>Líquido a liberar</th><th>Saldo FGTS</th><th>Banco saldo</th><th>Banco sim.</th><th>Tabela</th>
+        </tr></thead><tbody id="tbodyFgts">
+          <tr><td colspan="8"><div class="empty"><div class="icon">💰</div><p>Cole CPFs e clique em Simular FGTS</p></div></td></tr>
+        </tbody></table>
+      </div>
+      <div class="pagination" id="paginationFgts" style="padding:14px;display:none;">
+        <button class="page-btn" id="btnFgtsPrev" onclick="mudaPaginaFgts(-1)" disabled>← Anterior</button>
+        <span class="page-info" id="pageInfoFgts">Página 1</span>
+        <button class="page-btn" id="btnFgtsNext" onclick="mudaPaginaFgts(1)">Próxima →</button>
+      </div>
+    </div>
+  </div>
+
 </div><!-- /container -->
 
 <script>
@@ -828,7 +885,7 @@ const V8_AUTH_URL = 'https://auth.v8sistema.com/oauth/token';
 const V8_API_BASE = 'https://v2-bff-prod-front.yellowisland-b252a8a0.eastus.azurecontainerapps.io';
 const V8_CLIENT_ID = 'DHWogdaYmEI8n5bwwxPDzulMlSK7dwIn';
 
-const TABS = ['hub','v8','db','meusleads'];
+const TABS = ['hub','v8','db','meusleads','fgts'];
 const PAGE_SIZE = 50;
 
 // ──────────────────────────────────────────────────────────────
@@ -841,6 +898,7 @@ function switchTab(name) {
   });
   if (name === 'db' && dbLeads.length === 0) buscarBaseV8();
   if (name === 'meusleads') buscarMeusLeads();
+  if (name === 'fgts' && !fgtsLeads.length) buscarFgts();
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -1721,5 +1779,123 @@ function exportarMeusLeadsCSV() {
     l.margem_v8||''
   ].join(','));
   dlFile('﻿' + [header,...rows].join('\n'), `meus_leads_${ts()}.csv`, 'text/csv;charset=utf-8');
+}
+
+// ──────────────────────────────────────────────────────────────
+// ABA SIMULAR FGTS
+// ──────────────────────────────────────────────────────────────
+const WH_INICIAR_FGTS = 'https://rarelookingorca-n8n.cloudfy.live/webhook/simular-fgts';
+const WH_BUSCAR_FGTS  = 'https://rarelookingorca-n8n.cloudfy.live/webhook/fgts-buscar';
+const WH_CONTAR_FGTS  = 'https://rarelookingorca-n8n.cloudfy.live/webhook/fgts-contar';
+let fgtsLeads = [], fgtsPagina = 1, fgtsTotal = 0, fgtsBusca = '', fgtsStatus = '';
+
+(function(){
+  const el = document.getElementById('cpfFgts');
+  if (el) el.addEventListener('input', () => {
+    const n = parseCPFs(el.value).length;
+    document.getElementById('cpfFgtsCount').textContent = n ? n + ' CPFs detectados' : 'Nenhum CPF detectado';
+  });
+})();
+
+async function simularFgts() {
+  const cpfs = parseCPFs(document.getElementById('cpfFgts').value);
+  if (!cpfs.length) { setStatus('statusFgts','⚠️ Cole pelo menos um CPF válido.','error'); return; }
+  const btn = document.getElementById('btnSimularFgts');
+  btn.disabled = true; btn.textContent = '⏳ Simulando...';
+  setStatus('statusFgts', '🔐 Enviando ' + cpfs.length + ' CPFs para a V8... A consulta de saldo é demorada (~1 min por CPF).', 'info');
+  setProgress('progressBarFgts','progressTextFgts','progressWrapFgts', 3, 'Iniciando no servidor...');
+  try {
+    const resp = await fetch(WH_INICIAR_FGTS, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ cpfs }) });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    document.getElementById('tab-fgts').classList.add('has-data');
+    const META = cpfs.length;
+    let polls = 0, ultimo = -1, estavel = 0;
+    const iv = setInterval(async () => {
+      polls++;
+      try {
+        const r = await fetch(WH_CONTAR_FGTS, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ cpfs }) });
+        if (!r.ok) return;
+        const d = await r.json();
+        const proc = d.processados||0, comSaldo = d.com_saldo||0, liq = Number(d.total_liquido)||0;
+        const pct = Math.min(Math.round(proc/META*100), 99);
+        setProgress('progressBarFgts','progressTextFgts','progressWrapFgts', Math.max(pct,3), '⏳ ' + proc + '/' + META + ' processados');
+        setStatus('statusFgts', '⏳ Simulando... ' + proc + ' de ' + META + ' · ' + comSaldo + ' com saldo · ' + fmtBRL(liq) + ' líquido', 'info');
+        await buscarFgts();
+        if (proc === ultimo) estavel++; else { estavel = 0; ultimo = proc; }
+        if (proc >= META || estavel >= 6 || polls >= 720) {
+          clearInterval(iv);
+          btn.disabled = false; btn.textContent = '💰 Simular FGTS';
+          setProgress('progressBarFgts','progressTextFgts','progressWrapFgts', 100, '✅ ' + proc + ' processados');
+          setStatus('statusFgts', '✅ Simulação concluída! ' + proc + ' de ' + META + ' · ' + comSaldo + ' com saldo · ' + fmtBRL(liq) + ' líquido total.', 'success');
+          await buscarFgts();
+        }
+      } catch(e) {}
+    }, 10000);
+  } catch(err) {
+    setStatus('statusFgts','❌ Erro: ' + err.message, 'error');
+    setProgress('progressBarFgts','progressTextFgts','progressWrapFgts', 0, 'Falha');
+    btn.disabled = false; btn.textContent = '💰 Simular FGTS';
+  }
+}
+
+let fgtsSearchTimer = null;
+function buscarFgts(){ clearTimeout(fgtsSearchTimer); fgtsSearchTimer = setTimeout(_buscarFgts, 300); }
+async function _buscarFgts() {
+  const busca = (document.getElementById('searchFgts')||{}).value || '';
+  const st = (document.getElementById('filterFgts')||{}).value || '';
+  if (busca !== fgtsBusca || st !== fgtsStatus) { fgtsPagina = 1; fgtsBusca = busca; fgtsStatus = st; }
+  try {
+    const offset = (fgtsPagina-1)*PAGE_SIZE;
+    const params = new URLSearchParams({ limit: PAGE_SIZE, offset });
+    if (busca) params.set('search', busca);
+    if (st) params.set('status', st);
+    const resp = await fetch(WH_BUSCAR_FGTS + '?' + params);
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    fgtsLeads = data.leads || []; fgtsTotal = data.total || 0;
+    renderFgts(fgtsLeads); atualizarPaginacaoFgts();
+    document.getElementById('fgtsTotal').textContent = fgtsTotal.toLocaleString('pt-BR');
+    const comSaldo = fgtsLeads.filter(l => l.status === 'COM_SALDO');
+    document.getElementById('fgtsComSaldo').textContent = comSaldo.length.toLocaleString('pt-BR');
+    const maior = Math.max(0, ...fgtsLeads.map(l => Number(l.valor_liquido)||0));
+    document.getElementById('fgtsMaior').textContent = maior ? fmtBRL(maior) : '—';
+    const somaPg = comSaldo.reduce((s,l) => s + (Number(l.valor_liquido)||0), 0);
+    document.getElementById('fgtsLiquidoTotal').textContent = somaPg ? fmtBRL(somaPg) : '—';
+    if (fgtsLeads.length) document.getElementById('btnExportFgts').disabled = false;
+  } catch(err) { console.error('Erro ao buscar FGTS:', err); }
+}
+function renderFgts(leads) {
+  const stLabel = { COM_SALDO:'✅ Com saldo', SEM_AUTORIZACAO:'🔒 Sem autorização', SEM_SALDO:'— Sem saldo', SEM_SIMULACAO:'⚠️ Sem simulação', ERRO:'❌ Erro', PENDENTE:'⏳ Processando' };
+  if (!leads.length) {
+    document.getElementById('tbodyFgts').innerHTML = '<tr><td colspan="8"><div class="empty"><div class="icon">💰</div><p>' + (fgtsTotal===0?'Nenhuma simulação ainda':'Nenhum resultado para este filtro') + '</p></div></td></tr>';
+    return;
+  }
+  const offset = (fgtsPagina-1)*PAGE_SIZE;
+  document.getElementById('tbodyFgts').innerHTML = leads.map((l,i) => `
+    <tr>
+      <td>${offset+i+1}</td>
+      <td class="cpf">${l.cpf||'—'}</td>
+      <td style="font-size:11px">${stLabel[l.status]||l.status||'—'}</td>
+      <td class="valor">${l.valor_liquido?fmtBRL(l.valor_liquido):'—'}</td>
+      <td class="valor" style="font-size:11px">${l.saldo_total?fmtBRL(l.saldo_total):'—'}</td>
+      <td style="font-size:11px;color:var(--fg2)">${(l.provider_saldo||'—').toUpperCase()}</td>
+      <td style="font-size:11px;color:var(--fg2)">${(l.provider_simulacao||'—').toUpperCase()}</td>
+      <td style="font-size:11px;color:var(--fg2)">${l.tabela||'—'}</td>
+    </tr>`).join('');
+}
+function atualizarPaginacaoFgts() {
+  const tp = Math.ceil(fgtsTotal/PAGE_SIZE) || 1;
+  const pag = document.getElementById('paginationFgts');
+  pag.style.display = fgtsTotal > PAGE_SIZE ? 'flex' : 'none';
+  document.getElementById('pageInfoFgts').textContent = 'Página ' + fgtsPagina + ' de ' + tp + ' · ' + fgtsTotal.toLocaleString('pt-BR');
+  document.getElementById('btnFgtsPrev').disabled = fgtsPagina <= 1;
+  document.getElementById('btnFgtsNext').disabled = fgtsPagina >= tp;
+}
+function mudaPaginaFgts(d) { fgtsPagina = Math.max(1, fgtsPagina + d); _buscarFgts(); }
+function exportarFgtsCSV() {
+  if (!fgtsLeads.length) return;
+  const header = 'CPF,Status,Liquido a liberar,Saldo FGTS,Banco saldo,Banco simulacao,Tabela';
+  const rows = fgtsLeads.map(l => [ l.cpf||'', l.status||'', Number(l.valor_liquido)||0, Number(l.saldo_total)||0, l.provider_saldo||'', l.provider_simulacao||'', '"'+(l.tabela||'').replace(/"/g,'""')+'"' ].join(','));
+  dlFile('\uFEFF' + [header,...rows].join('\n'), 'fgts_simulacoes_' + ts() + '.csv', 'text/csv;charset=utf-8');
 }
 </script>
