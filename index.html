@@ -816,7 +816,11 @@
       <textarea class="cpf-area" id="cpfFgts" placeholder="Cole os CPFs — um por linha, ou separados por vírgula/espaço"></textarea>
       <div class="cpf-hint" id="cpfFgtsCount" style="margin-top:6px;">Nenhum CPF detectado</div>
       <button class="btn-main" id="btnSimularFgts" onclick="simularFgts()">💰 Simular FGTS</button>
-      <button class="btn-secondary" id="btnReprocessarFgts" onclick="reprocessarFgts()" style="margin-top:8px;">🔁 Reprocessar erros temporários</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center;">
+        <button class="btn-secondary" id="btnAtualizarFgts" onclick="atualizarEsperaFgts()" style="margin-top:0;">🔄 Atualizar em espera (sem custo)</button>
+        <button class="btn-secondary" id="btnReprocessarFgts" onclick="reprocessarFgts()" style="margin-top:0;">🔁 Reprocessar (nova consulta)</button>
+        <span class="cpf-hint" id="fgtsEsperaInfo">⏳ Em espera: —</span>
+      </div>
       <div style="font-size:11px;color:var(--fg3);margin-top:8px;">⚠️ Cada CPF gera consultas de saldo na V8, que podem ser cobradas. Comece com poucos. A consulta de saldo é demorada (~1 min por CPF).</div>
       <div class="status-box" id="statusFgts"></div>
       <div class="progress-wrap" id="progressWrapFgts">
@@ -840,7 +844,7 @@
           <option value="SEM_AUTORIZACAO">Sem autorização</option>
           <option value="SEM_SALDO">Sem saldo</option>
           <option value="SEM_SIMULACAO">Sem simulação</option>
-          <option value="ERRO_TEMP">Erro temporário</option>
+          <option value="EM_ESPERA">Em espera</option>
         </select>
         <button class="dl-btn purple" onclick="exportarFgtsCSV()" id="btnExportFgts" disabled>⬇ Exportar CSV</button>
       </div>
@@ -900,7 +904,7 @@ function switchTab(name) {
   });
   if (name === 'db' && dbLeads.length === 0) buscarBaseV8();
   if (name === 'meusleads') buscarMeusLeads();
-  if (name === 'fgts' && !fgtsLeads.length) buscarFgts();
+  if (name === 'fgts') { if (!fgtsLeads.length) buscarFgts(); atualizarContadorEspera(); }
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -1789,6 +1793,7 @@ function exportarMeusLeadsCSV() {
 const WH_INICIAR_FGTS = 'https://rarelookingorca-n8n.cloudfy.live/webhook/simular-fgts';
 const WH_BUSCAR_FGTS  = 'https://rarelookingorca-n8n.cloudfy.live/webhook/fgts-buscar';
 const WH_CONTAR_FGTS  = 'https://rarelookingorca-n8n.cloudfy.live/webhook/fgts-contar';
+const WH_ATUALIZAR_FGTS = 'https://rarelookingorca-n8n.cloudfy.live/webhook/fgts-atualizar';
 let fgtsLeads = [], fgtsPagina = 1, fgtsTotal = 0, fgtsBusca = '', fgtsStatus = '';
 
 (function(){
@@ -1811,30 +1816,50 @@ async function reprocessarFgts() {
   setStatus('statusFgts', '🔎 Buscando CPFs com erro temporário...', 'info');
   let cpfs = [];
   try {
-    const r = await fetch(WH_BUSCAR_FGTS + '?' + new URLSearchParams({ limit: 10000, offset: 0, status: 'ERRO_TEMP' }));
+    const r = await fetch(WH_BUSCAR_FGTS + '?' + new URLSearchParams({ limit: 10000, offset: 0, status: 'EM_ESPERA' }));
     if (r.ok) { const d = await r.json(); cpfs = (d.leads||[]).map(l => l.cpf).filter(Boolean); }
   } catch(e) {}
-  if (!cpfs.length) { setStatus('statusFgts', '✅ Não há CPFs com erro temporário para reprocessar.', 'success'); return; }
+  if (!cpfs.length) { setStatus('statusFgts', '✅ Não há CPFs em espera para reprocessar.', 'success'); return; }
   await processarLotesFgts(cpfs, true);
 }
 
-async function processarLotesFgts(cpfs, reproc) {
+async function atualizarContadorEspera() {
+  try {
+    const r = await fetch(WH_BUSCAR_FGTS + '?' + new URLSearchParams({ limit: 1, offset: 0, status: 'EM_ESPERA' }));
+    if (r.ok) { const d = await r.json(); document.getElementById('fgtsEsperaInfo').textContent = '⏳ Em espera: ' + (d.total||0).toLocaleString('pt-BR') + ((d.total||0) ? '' : ' — todas voltaram ✅'); }
+  } catch(e) {}
+}
+
+async function atualizarEsperaFgts() {
+  setStatus('statusFgts', '🔎 Buscando CPFs em espera...', 'info');
+  let cpfs = [];
+  try {
+    const r = await fetch(WH_BUSCAR_FGTS + '?' + new URLSearchParams({ limit: 10000, offset: 0, status: 'EM_ESPERA' }));
+    if (r.ok) { const d = await r.json(); cpfs = (d.leads||[]).map(l => l.cpf).filter(Boolean); }
+  } catch(e) {}
+  if (!cpfs.length) { setStatus('statusFgts', '✅ Nenhum CPF em espera — todas as consultas voltaram.', 'success'); atualizarContadorEspera(); return; }
+  await processarLotesFgts(cpfs, false, WH_ATUALIZAR_FGTS, '🔄 Puxando resultado (sem nova consulta) de ');
+}
+
+async function processarLotesFgts(cpfs, reproc, webhook, rotulo) {
+  webhook = webhook || WH_INICIAR_FGTS;
   const btn = document.getElementById('btnSimularFgts');
   const btnR = document.getElementById('btnReprocessarFgts');
-  btn.disabled = true; btnR.disabled = true;
+  const btnA = document.getElementById('btnAtualizarFgts');
+  btn.disabled = true; btnR.disabled = true; btnA.disabled = true;
   btn.textContent = '⏳ Simulando...';
   document.getElementById('tab-fgts').classList.add('has-data');
 
   const LOTE = 12;
   const META = cpfs.length;
   const totalLotes = Math.ceil(META / LOTE);
-  setStatus('statusFgts', (reproc ? '🔁 Reprocessando ' : '🔐 Consultando ') + META + ' CPFs em ' + totalLotes + ' lote(s). Vai em lotes pequenos para a Caixa não barrar — não feche a aba.', 'info');
+  setStatus('statusFgts', (rotulo || (reproc ? '🔁 Reprocessando ' : '🔐 Consultando ')) + META + ' CPFs em ' + totalLotes + ' lote(s). Vai em lotes pequenos para a Caixa não barrar — não feche a aba.', 'info');
   setProgress('progressBarFgts','progressTextFgts','progressWrapFgts', 2, 'Iniciando...');
 
   try {
     for (let i = 0; i < totalLotes; i++) {
       const lote = cpfs.slice(i*LOTE, (i+1)*LOTE);
-      const resp = await fetch(WH_INICIAR_FGTS, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ cpfs: lote }) });
+      const resp = await fetch(webhook, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ cpfs: lote }) });
       if (!resp.ok) throw new Error('HTTP ' + resp.status + ' no lote ' + (i+1));
       const deadline = Date.now() + 90000;
       let procLote = 0;
@@ -1863,7 +1888,8 @@ async function processarLotesFgts(cpfs, reproc) {
   } catch(err) {
     setStatus('statusFgts','❌ Erro: ' + err.message, 'error');
   } finally {
-    btn.disabled = false; btnR.disabled = false; btn.textContent = '💰 Simular FGTS';
+    btn.disabled = false; btnR.disabled = false; btnA.disabled = false; btn.textContent = '💰 Simular FGTS';
+    atualizarContadorEspera();
   }
 }
 let fgtsSearchTimer = null;
@@ -1893,7 +1919,7 @@ async function _buscarFgts() {
   } catch(err) { console.error('Erro ao buscar FGTS:', err); }
 }
 function renderFgts(leads) {
-  const stLabel = { COM_SALDO:'✅ Com saldo', SEM_AUTORIZACAO:'🔒 Sem autorização', SEM_SALDO:'— Sem saldo', SEM_SIMULACAO:'⚠️ Sem simulação', ERRO:'❌ Erro', ERRO_TEMP:'🔁 Erro temporário (reprocessar)', PENDENTE:'⏳ Processando' };
+  const stLabel = { COM_SALDO:'✅ Com saldo', SEM_AUTORIZACAO:'🔒 Sem autorização', SEM_SALDO:'— Sem saldo', SEM_SIMULACAO:'⚠️ Sem simulação', ERRO:'❌ Erro', ERRO_TEMP:'🔁 Erro temporário', EM_ESPERA:'⏳ Em espera', PENDENTE:'⏳ Processando' };
   if (!leads.length) {
     document.getElementById('tbodyFgts').innerHTML = '<tr><td colspan="8"><div class="empty"><div class="icon">💰</div><p>' + (fgtsTotal===0?'Nenhuma simulação ainda':'Nenhum resultado para este filtro') + '</p></div></td></tr>';
     return;
