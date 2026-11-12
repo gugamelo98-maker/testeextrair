@@ -816,6 +816,7 @@
       <textarea class="cpf-area" id="cpfFgts" placeholder="Cole os CPFs — um por linha, ou separados por vírgula/espaço"></textarea>
       <div class="cpf-hint" id="cpfFgtsCount" style="margin-top:6px;">Nenhum CPF detectado</div>
       <button class="btn-main" id="btnSimularFgts" onclick="simularFgts()">💰 Simular FGTS</button>
+      <button class="btn-secondary" id="btnReprocessarFgts" onclick="reprocessarFgts()" style="margin-top:8px;">🔁 Reprocessar erros temporários</button>
       <div style="font-size:11px;color:var(--fg3);margin-top:8px;">⚠️ Cada CPF gera consultas de saldo na V8, que podem ser cobradas. Comece com poucos. A consulta de saldo é demorada (~1 min por CPF).</div>
       <div class="status-box" id="statusFgts"></div>
       <div class="progress-wrap" id="progressWrapFgts">
@@ -1803,14 +1804,31 @@ function _sleepFgts(ms){ return new Promise(r=>setTimeout(r,ms)); }
 async function simularFgts() {
   const cpfs = parseCPFs(document.getElementById('cpfFgts').value);
   if (!cpfs.length) { setStatus('statusFgts','⚠️ Cole pelo menos um CPF válido.','error'); return; }
+  await processarLotesFgts(cpfs, false);
+}
+
+async function reprocessarFgts() {
+  setStatus('statusFgts', '🔎 Buscando CPFs com erro temporário...', 'info');
+  let cpfs = [];
+  try {
+    const r = await fetch(WH_BUSCAR_FGTS + '?' + new URLSearchParams({ limit: 10000, offset: 0, status: 'ERRO_TEMP' }));
+    if (r.ok) { const d = await r.json(); cpfs = (d.leads||[]).map(l => l.cpf).filter(Boolean); }
+  } catch(e) {}
+  if (!cpfs.length) { setStatus('statusFgts', '✅ Não há CPFs com erro temporário para reprocessar.', 'success'); return; }
+  await processarLotesFgts(cpfs, true);
+}
+
+async function processarLotesFgts(cpfs, reproc) {
   const btn = document.getElementById('btnSimularFgts');
-  btn.disabled = true; btn.textContent = '⏳ Simulando...';
+  const btnR = document.getElementById('btnReprocessarFgts');
+  btn.disabled = true; btnR.disabled = true;
+  btn.textContent = '⏳ Simulando...';
   document.getElementById('tab-fgts').classList.add('has-data');
 
   const LOTE = 12;
   const META = cpfs.length;
   const totalLotes = Math.ceil(META / LOTE);
-  setStatus('statusFgts', '🔐 Consultando ' + META + ' CPFs em ' + totalLotes + ' lote(s). Vai em lotes pequenos para a Caixa não barrar — não feche a aba.', 'info');
+  setStatus('statusFgts', (reproc ? '🔁 Reprocessando ' : '🔐 Consultando ') + META + ' CPFs em ' + totalLotes + ' lote(s). Vai em lotes pequenos para a Caixa não barrar — não feche a aba.', 'info');
   setProgress('progressBarFgts','progressTextFgts','progressWrapFgts', 2, 'Iniciando...');
 
   try {
@@ -1834,18 +1852,18 @@ async function simularFgts() {
       }
       await _sleepFgts(1500);
     }
-    let liq = 0, comSaldo = 0, temp = 0;
+    let liq = 0, comSaldo = 0;
     try {
       const r = await fetch(WH_CONTAR_FGTS, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ cpfs }) });
       if (r.ok) { const d = await r.json(); liq = Number(d.total_liquido)||0; comSaldo = d.com_saldo||0; }
     } catch(e) {}
     setProgress('progressBarFgts','progressTextFgts','progressWrapFgts', 100, '✅ Concluído');
-    setStatus('statusFgts', '✅ Concluído! ' + comSaldo + ' com saldo · ' + fmtBRL(liq) + ' líquido total. Filtre por "Erro temporário" e clique em Simular de novo para reprocessar os que a Caixa barrou.', 'success');
+    setStatus('statusFgts', '✅ Concluído! ' + comSaldo + ' com saldo · ' + fmtBRL(liq) + ' líquido total. Os que ficarem em "Erro temporário" podem ser reprocessados pelo botão.', 'success');
     await buscarFgts();
   } catch(err) {
     setStatus('statusFgts','❌ Erro: ' + err.message, 'error');
   } finally {
-    btn.disabled = false; btn.textContent = '💰 Simular FGTS';
+    btn.disabled = false; btnR.disabled = false; btn.textContent = '💰 Simular FGTS';
   }
 }
 let fgtsSearchTimer = null;
