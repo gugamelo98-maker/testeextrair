@@ -1798,47 +1798,56 @@ let fgtsLeads = [], fgtsPagina = 1, fgtsTotal = 0, fgtsBusca = '', fgtsStatus = 
   });
 })();
 
+function _sleepFgts(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
 async function simularFgts() {
   const cpfs = parseCPFs(document.getElementById('cpfFgts').value);
   if (!cpfs.length) { setStatus('statusFgts','⚠️ Cole pelo menos um CPF válido.','error'); return; }
   const btn = document.getElementById('btnSimularFgts');
   btn.disabled = true; btn.textContent = '⏳ Simulando...';
-  setStatus('statusFgts', '🔐 Enviando ' + cpfs.length + ' CPFs para a V8... A consulta de saldo é demorada (~1 min por CPF).', 'info');
-  setProgress('progressBarFgts','progressTextFgts','progressWrapFgts', 3, 'Iniciando no servidor...');
+  document.getElementById('tab-fgts').classList.add('has-data');
+
+  const LOTE = 12;
+  const META = cpfs.length;
+  const totalLotes = Math.ceil(META / LOTE);
+  setStatus('statusFgts', '🔐 Consultando ' + META + ' CPFs em ' + totalLotes + ' lote(s). Vai em lotes pequenos para a Caixa não barrar — não feche a aba.', 'info');
+  setProgress('progressBarFgts','progressTextFgts','progressWrapFgts', 2, 'Iniciando...');
+
   try {
-    const resp = await fetch(WH_INICIAR_FGTS, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ cpfs }) });
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    document.getElementById('tab-fgts').classList.add('has-data');
-    const META = cpfs.length;
-    let polls = 0, ultimo = -1, estavel = 0;
-    const iv = setInterval(async () => {
-      polls++;
-      try {
-        const r = await fetch(WH_CONTAR_FGTS, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ cpfs }) });
-        if (!r.ok) return;
-        const d = await r.json();
-        const proc = d.processados||0, comSaldo = d.com_saldo||0, liq = Number(d.total_liquido)||0;
-        const pct = Math.min(Math.round(proc/META*100), 99);
-        setProgress('progressBarFgts','progressTextFgts','progressWrapFgts', Math.max(pct,3), '⏳ ' + proc + '/' + META + ' processados');
-        setStatus('statusFgts', '⏳ Simulando... ' + proc + ' de ' + META + ' · ' + comSaldo + ' com saldo · ' + fmtBRL(liq) + ' líquido', 'info');
+    for (let i = 0; i < totalLotes; i++) {
+      const lote = cpfs.slice(i*LOTE, (i+1)*LOTE);
+      const resp = await fetch(WH_INICIAR_FGTS, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ cpfs: lote }) });
+      if (!resp.ok) throw new Error('HTTP ' + resp.status + ' no lote ' + (i+1));
+      const deadline = Date.now() + 90000;
+      let procLote = 0;
+      while (Date.now() < deadline) {
+        await _sleepFgts(5000);
+        try {
+          const r = await fetch(WH_CONTAR_FGTS, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ cpfs: lote }) });
+          if (r.ok) { const d = await r.json(); procLote = d.processados||0; }
+        } catch(e) {}
+        const pct = Math.round(((i + Math.min(procLote/lote.length,1)) / totalLotes) * 100);
+        setProgress('progressBarFgts','progressTextFgts','progressWrapFgts', Math.max(pct,2), 'Lote ' + (i+1) + '/' + totalLotes);
+        setStatus('statusFgts', '⏳ Lote ' + (i+1) + ' de ' + totalLotes + '... consultando saldo na Caixa', 'info');
         await buscarFgts();
-        if (proc === ultimo) estavel++; else { estavel = 0; ultimo = proc; }
-        if (proc >= META || estavel >= 6 || polls >= 720) {
-          clearInterval(iv);
-          btn.disabled = false; btn.textContent = '💰 Simular FGTS';
-          setProgress('progressBarFgts','progressTextFgts','progressWrapFgts', 100, '✅ ' + proc + ' processados');
-          setStatus('statusFgts', '✅ Simulação concluída! ' + proc + ' de ' + META + ' · ' + comSaldo + ' com saldo · ' + fmtBRL(liq) + ' líquido total.', 'success');
-          await buscarFgts();
-        }
-      } catch(e) {}
-    }, 10000);
+        if (procLote >= lote.length) break;
+      }
+      await _sleepFgts(1500);
+    }
+    let liq = 0, comSaldo = 0, temp = 0;
+    try {
+      const r = await fetch(WH_CONTAR_FGTS, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ cpfs }) });
+      if (r.ok) { const d = await r.json(); liq = Number(d.total_liquido)||0; comSaldo = d.com_saldo||0; }
+    } catch(e) {}
+    setProgress('progressBarFgts','progressTextFgts','progressWrapFgts', 100, '✅ Concluído');
+    setStatus('statusFgts', '✅ Concluído! ' + comSaldo + ' com saldo · ' + fmtBRL(liq) + ' líquido total. Filtre por "Erro temporário" e clique em Simular de novo para reprocessar os que a Caixa barrou.', 'success');
+    await buscarFgts();
   } catch(err) {
     setStatus('statusFgts','❌ Erro: ' + err.message, 'error');
-    setProgress('progressBarFgts','progressTextFgts','progressWrapFgts', 0, 'Falha');
+  } finally {
     btn.disabled = false; btn.textContent = '💰 Simular FGTS';
   }
 }
-
 let fgtsSearchTimer = null;
 function buscarFgts(){ clearTimeout(fgtsSearchTimer); fgtsSearchTimer = setTimeout(_buscarFgts, 300); }
 async function _buscarFgts() {
