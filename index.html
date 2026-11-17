@@ -518,6 +518,11 @@
       </div>
 
       <button class="btn-main" id="btnHigienizar" onclick="iniciarHigienizacao()">🔍 Higienizar com V8</button>
+      <div id="filaCtrl" style="display:none;gap:8px;margin-top:10px;flex-wrap:wrap;">
+        <button class="btn-secondary" id="btnPausar" onclick="controleFila('pausar')" style="margin-top:0;">⏸ Pausar</button>
+        <button class="btn-secondary" id="btnRetomar" onclick="controleFila('retomar')" style="margin-top:0;display:none;">▶ Retomar</button>
+        <button class="btn-secondary" id="btnEncerrar" onclick="controleFila('encerrar')" style="margin-top:0;">⏹ Encerrar</button>
+      </div>
 
       <div class="status-box" id="statusV8"></div>
       <div class="progress-wrap" id="progressWrapV8">
@@ -1118,7 +1123,113 @@ function excluirCPFs() {
   atualizarContagem();
 }
 
+// ──────────────────────────────────────────────────────────────
+// HIGIENIZAÇÃO EM SEGUNDO PLANO (fila no servidor: pode fechar a página)
+// ──────────────────────────────────────────────────────────────
+const WEBHOOK_FILA = 'https://rarelookingorca-n8n.cloudfy.live/webhook/v8-hig-fila';
+let filaLote = null, filaTimer = null;
+
+async function filaApi(body) {
+  const r = await fetch(WEBHOOK_FILA, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+
 async function iniciarHigienizacao() {
+  const cpfs = parseCPFs(cpfArea.value);
+  if (!cpfs.length) {
+    setStatus('statusV8', '⚠️ Cole pelo menos um CPF válido antes de higienizar.', 'error');
+    document.getElementById('statusV8').style.display = 'block';
+    return;
+  }
+  const btn = document.getElementById('btnHigienizar');
+  btn.disabled = true;
+  btn.textContent = '⏳ Enviando para a fila...';
+  try {
+    const d = await filaApi({ acao: 'criar', cpfs });
+    if (!d.ok) throw new Error(d.erro || 'não consegui criar a fila');
+    filaLote = d.lote;
+    v8Leads = [];
+    renderTabelaV8(v8Leads);
+    setStatus('statusV8',
+      `📥 ${d.total.toLocaleString('pt-BR')} CPFs na fila` +
+      (d.pulados ? ` · ${d.pulados.toLocaleString('pt-BR')} pulados (já higienizados nos últimos 30 dias)` : '') +
+      ` · o robô processa 10 por vez sozinho, pode fechar a página.`, 'info');
+    acompanharFila();
+  } catch (err) {
+    setStatus('statusV8', '❌ Erro: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔍 Higienizar com V8';
+  }
+}
+
+function acompanharFila() { clearTimeout(filaTimer); atualizarFila(); }
+
+async function atualizarFila() {
+  try {
+    const s = await filaApi({ acao: 'status', lote: filaLote });
+    renderFila(s);
+    if (s.estado === 'rodando' || s.estado === 'pausado') filaTimer = setTimeout(atualizarFila, 8000);
+  } catch (e) {
+    filaTimer = setTimeout(atualizarFila, 15000);
+  }
+}
+
+function renderFila(s) {
+  const ctrl = document.getElementById('filaCtrl');
+  if (!s || !s.lote) { ctrl.style.display = 'none'; return; }
+  filaLote = s.lote;
+  const ativo = s.estado === 'rodando' || s.estado === 'pausado';
+  const nomes = { rodando: 'Rodando', pausado: 'Pausado', encerrado: 'Encerrado', concluido: 'Concluído' };
+  const feitos = s.processados || 0, tot = s.total || 0;
+  const pct = tot ? Math.round((feitos / tot) * 100) : 100;
+  setProgress('progressBarV8', 'progressTextV8', 'progressWrapV8', pct,
+    `Lote #${s.lote} (${s.criado_em}) · ${nomes[s.estado] || s.estado} · ${feitos.toLocaleString('pt-BR')}/${tot.toLocaleString('pt-BR')} CPFs` +
+    (s.pulados ? ` · ${s.pulados.toLocaleString('pt-BR')} pulados` : '') + (s.erros ? ` · ${s.erros} com erro` : ''));
+  document.getElementById('v8Total').textContent     = feitos.toLocaleString('pt-BR');
+  document.getElementById('v8ComMargem').textContent = (s.com_margem || 0).toLocaleString('pt-BR');
+  document.getElementById('v8SemMargem').textContent = Math.max(0, feitos - (s.com_margem || 0)).toLocaleString('pt-BR');
+  document.getElementById('v8Taxa').textContent      = feitos ? Math.round(((s.com_margem || 0) / feitos) * 100) + '%' : '—';
+  v8Leads = s.leads || [];
+  renderTabelaV8(v8Leads);
+  if (v8Leads.length) {
+    ['btnV8CSV','btnV8JSON','btnSalvarV8Hig'].forEach(id => document.getElementById(id).disabled = false);
+    document.getElementById('tab-v8').classList.add('has-data');
+  }
+  ctrl.style.display = ativo ? 'flex' : 'none';
+  document.getElementById('btnPausar').style.display  = s.estado === 'rodando' ? '' : 'none';
+  document.getElementById('btnRetomar').style.display = s.estado === 'pausado' ? '' : 'none';
+  if (s.estado === 'concluido') {
+    setStatus('statusV8', `✅ Higienização concluída: ${s.com_margem} com margem de ${feitos} CPFs · já salvos em Meus Leads`, 'success');
+  } else if (s.estado === 'encerrado') {
+    setStatus('statusV8', `⏹ Higienização encerrada: ${feitos} CPFs processados, ${s.com_margem} com margem · já salvos em Meus Leads`, 'info');
+  } else if (s.estado === 'pausado') {
+    setStatus('statusV8', `⏸ Pausado. Faltam ${(s.na_fila || 0).toLocaleString('pt-BR')} CPFs. Clique em Retomar para continuar.`, 'info');
+  } else {
+    setStatus('statusV8', `🔄 Higienizando em segundo plano · faltam ${(s.na_fila || 0).toLocaleString('pt-BR')} CPFs · pode fechar a página.`, 'info');
+  }
+}
+
+async function controleFila(acao) {
+  if (!filaLote) return;
+  if (acao === 'encerrar' && !confirm('Encerrar a higienização? Os CPFs que ainda não foram enviados serão descartados.')) return;
+  try {
+    const s = await filaApi({ acao, lote: filaLote });
+    renderFila(s);
+    if (s.estado === 'rodando' || s.estado === 'pausado') acompanharFila();
+  } catch (err) {
+    setStatus('statusV8', '❌ Erro: ' + err.message, 'error');
+  }
+}
+
+// Ao abrir a página, retoma o acompanhamento do lote que ainda está rodando ou pausado
+filaApi({ acao: 'status' }).then(s => {
+  if (s && s.lote && (s.estado === 'rodando' || s.estado === 'pausado')) { renderFila(s); acompanharFila(); }
+}).catch(() => {});
+
+// Higienização antiga (página aberta, lote por lote) — mantida só como reserva, não usada pelo botão
+async function iniciarHigienizacaoNaPagina() {
   const cpfs = parseCPFs(cpfArea.value);
   if (!cpfs.length) {
     setStatus('statusV8', '⚠️ Cole pelo menos um CPF válido antes de higienizar.', 'error');
