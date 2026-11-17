@@ -1106,7 +1106,8 @@ function parseCPFs(txt) {
   return [...new Set(
     txt.split(/[\n,;\s]+/)
        .map(s => s.replace(/\D/g,''))
-       .filter(s => s.length >= 10)
+       .filter(s => s.length >= 9 && s.length <= 11)
+       .map(s => s.padStart(11, '0'))
   )];
 }
 function atualizarContagem() {
